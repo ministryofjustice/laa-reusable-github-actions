@@ -15,7 +15,7 @@ This is a beta function from Github and my be changed/break at very short notice
 In your repo's workflows you can invoke one of these actions with 
 ```yaml
 jobs:
-  call-workflow:
+  rubocop:
     uses: ministryofjustice/laa-reusable-github-actions/.github/workflows/rubocop.yml@main
 ```
 This can be broken down as follows:
@@ -28,14 +28,16 @@ So if you create a branch named `improve-rubocop` you could test the
 workflow on your remote repo by calling `ministryofjustice/laa-reusable-github-actions/.github/workflows/rubocop.yml@improve-rubocop`
 
 ### Warning
-The header you give your job in _your_ repo will be reflected in the calling path inside your pull request
+
+I have set the job name of the initial workflows as `execution` so that, when you use a header 
+in _your_ repo it will be reflected in the calling path inside your pull request
 So if you have a pull request workflow file in your repo like so:
 ```yaml
 name: Pull request
 on: [pull_request]
 
 jobs:
-  call-workflow:
+  rubocop:
     uses: ministryofjustice/laa-reusable-github-actions/.github/workflows/rubocop.yml@main
 
   rspec:
@@ -49,11 +51,11 @@ jobs:
 ```
 Your pull request checks will resemble
 ```text
-Pull request / call-workflow / rubocop (pull_request)
+Pull request / rubocop / execution (pull_request)
 Pull request / rspec (pull_request)
 ``` 
 
-So beware of naming your local job `rubocop` or your jobs will resemble
+So it doesn't  duplicate the  local job `rubocop` e.g.
 ```text
 Pull request / rubocop / rubocop (pull_request)
 Pull request / rspec (pull_request)
