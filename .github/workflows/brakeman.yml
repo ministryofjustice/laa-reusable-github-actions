@@ -3,7 +3,7 @@ name: Resuable brakeman workflow
 on: workflow_call
 
 jobs:
-  brakeman-scan:
+  brakeman:
     name: scan
     runs-on: ubuntu-latest
     steps:

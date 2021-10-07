@@ -31,7 +31,7 @@ workflow on your remote repo by calling `ministryofjustice/laa-reusable-github-a
 
 ### Warning
 
-I have set the job name of the initial workflows as `execution` so that, when you use a header 
+I have set the job name of the initial workflows as `scan` so that, when you use a header 
 in _your_ repo it will be reflected in the calling path inside your pull request
 So if you have a pull request workflow file in your repo like so:
 ```yaml
@@ -42,24 +42,22 @@ jobs:
   rubocop:
     uses: ministryofjustice/laa-reusable-github-actions/.github/workflows/rubocop.yml@main
 
-  rspec:
+  something:
     runs-on: ubuntu-latest
     services:
       postgres:
         image: postgres:10.11
-        ports: [ "5432:5432" ]
-        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
         # <snip>
 ```
 Your pull request checks will resemble
 ```text
-Pull request / rubocop / execution (pull_request)
-Pull request / rspec (pull_request)
+Pull request / rubocop / scan (pull_request)
+Pull request / something (pull_request)
 ``` 
 
 So it doesn't  duplicate the  local job `rubocop` e.g.
 ```text
 Pull request / rubocop / rubocop (pull_request)
-Pull request / rspec (pull_request)
+Pull request / something (pull_request)
 ```
 
