@@ -10,7 +10,7 @@ This is a beta function from Github and my be changed/break at very short notice
 ## Currently available actions
 * rubocop
 
-##Invoking an action
+## Invoking an action
 
 In your repo's workflows you can invoke one of these actions with 
 ```yaml
@@ -27,6 +27,7 @@ Where version is the branch name
 So if you create a branch named `improve-rubocop` you could test the 
 workflow on your remote repo by calling `ministryofjustice/laa-reusable-github-actions/.github/workflows/rubocop.yml@improve-rubocop`
 
+### Warning
 The header you give your job in _your_ repo will be reflected in the calling path inside your pull request
 So if you have a pull request workflow file in your repo like so:
 ```yaml
