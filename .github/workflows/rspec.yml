@@ -3,7 +3,7 @@ name: Resuable rspec workflow
 on: workflow_call
 
 jobs:
-  rspec:
+  execution:
     runs-on: ubuntu-latest
     services:
       postgres:
