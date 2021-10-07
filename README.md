@@ -9,6 +9,7 @@ This is a beta function from Github and my be changed/break at very short notice
 
 ## Currently available actions
 * rubocop
+* rspec
 
 ## Invoking an action
 
