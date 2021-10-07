@@ -7,7 +7,8 @@ on:
         required: false
 
 jobs:
-  execution:
+  rubocop:
+    name: scan
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
