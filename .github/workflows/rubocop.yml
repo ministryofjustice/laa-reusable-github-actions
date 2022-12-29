@@ -11,7 +11,7 @@ jobs:
     name: scan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Set up ruby
         # this should inherit from your .ruby-version
         uses: ruby/setup-ruby@v1
