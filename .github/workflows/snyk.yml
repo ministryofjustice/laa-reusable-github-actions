@@ -1,0 +1,49 @@
+name: Reusable Snyk Docker Image Scan
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: "Label to tag the docker image with"
+        required: true
+        type: string
+    secrets:
+      snyk_token:
+        description: "Snyk service account API token"
+        required: true
+
+jobs:
+  snyk:
+    name: Scan docker image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Build docker image
+        run: |
+          docker build \
+            --tag ${{ inputs.tag }}:scan \
+            --file Dockerfile .
+
+      - name: Scan docker image using Snyk
+        continue-on-error: true
+        uses: snyk/actions/docker@master
+        env:
+          SNYK_TOKEN: ${{ secrets.snyk_token }}
+        with:
+          image: ${{ inputs.tag }}:scan
+          args: --file=Dockerfile
+
+      - name: Monitor docker image using Snyk
+        uses: snyk/actions/docker@master
+        env:
+          SNYK_TOKEN: ${{ secrets.snyk_token }}
+        with:
+          command: monitor
+          image: ${{ inputs.tag }}:scan
+          args: --file=Dockerfile
+
+      - name: Upload result to GitHub Code Scanning
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: snyk.sarif
