@@ -1,20 +1,20 @@
 # LAA Reusable Github Actions
 
-Following the publication of [this article](https://docs.github.com/en/actions/learn-github-actions/reusing-workflows) by Github
-announcing the beta release of reusable workflows, this is an attempt to start a central repository 
-of github jobs that can be called from remote repositories.
+Following the publication of [this article](https://docs.github.com/en/actions/learn-github-actions/reusing-workflows) by Github announcing the beta release of reusable workflows, this is an attempt to start a central repository of github jobs that can be called from remote repositories.
 
 ## Notices
 This is a beta function from Github and my be changed/break at very short notice
 
-## Currently available actions
-* rubocop
-* rspec
+## Currently available workflows
 * brakeman
+* format
+* rspec
+* rubocop
+* snyk
 
-## Invoking an action
+## Invoking a workflow
 
-In your repo's workflows you can invoke one of these actions with 
+In your repo's workflows you can invoke one of the workflows (available in `.github/workflows/`) with
 ```yaml
 jobs:
   rubocop:
@@ -28,6 +28,44 @@ This can be broken down as follows:
 Where version is the branch name  
 So if you create a branch named `improve-rubocop` you could test the 
 workflow on your remote repo by calling `ministryofjustice/laa-reusable-github-actions/.github/workflows/rubocop.yml@improve-rubocop`
+
+## Currently available actions
+* authenticate_to_cluster
+
+## Invoking an action
+
+In your repo's workflows you can invoke one of the github actions (available in `.github/actions/`) with
+
+```yaml
+# example staging deployment requiring authentication to the kubernetes cluster
+  deploy-staging:
+    runs-on: ubuntu-latest
+    needs: build
+    environment: staging
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Authenticate to cluster
+        uses: ministryofjustice/laa-reusable-github-actions/.github/actions/authenticate_to_cluster@main
+        with:
+          kube-cert: ${{ secrets.KUBE_STAGING_CERT }}
+          kube-token: ${{ secrets.KUBE_STAGING_TOKEN }}
+          kube-cluster: ${{ secrets.KUBE_STAGING_CLUSTER }}
+          kube-namespace: ${{ secrets.KUBE_STAGING_NAMESPACE }}
+
+      - name: deployment
+        ...
+
+```
+
+Note that you may want to use the action but pin it so changes to it do not impact your workflow. To achieve this you can use a commit shah after the `@`.
+
+```yaml
+# example using a pinned version of the action for security and stability
+uses: ministryofjustice/laa-reusable-github-actions/.github/actions/authenticate_to_cluster@7666443ea3f635ec52544311e0f0ea51830468c0
+```
 
 ### Warning
 
