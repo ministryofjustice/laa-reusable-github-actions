@@ -16,11 +16,11 @@ jobs:
         run: |
           wget http://mirrors.kernel.org/ubuntu/pool/main/libf/libffi/libffi6_3.2.1-8_amd64.deb
           sudo apt install ./libffi6_3.2.1-8_amd64.deb
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up ruby
         # this should inherit from your .ruby-version
         uses: ruby/setup-ruby@v1
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: vendor/bundle
           key: ${{ runner.os }}-gems-${{ hashFiles('**/Gemfile.lock') }}
@@ -47,7 +47,7 @@ jobs:
           RAILS_ENV: test
         run: |
           bundle exec rspec
-      - uses: actions/upload-artifact@v1
+      - uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: coverage-report
