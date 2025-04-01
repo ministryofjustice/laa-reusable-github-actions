@@ -1,0 +1,38 @@
+name: "kube-auth"
+description: 'Authenticate to a kubernetes cluster'
+inputs:
+  kube_cluster:
+    description: "Kubernetes cluster name"
+    required: true
+  kube_token:
+    description: "Kubernetes cluster authentication token"
+    required: true
+  kube_cert:
+    description: "Kubernetes cluster authentication certificate"
+    required: true
+  kube_namespace:
+    description: "Kubernetes namespace"
+    required: true
+  kube_service_account:
+    required: false
+    description: "Kubernetes Service Account"
+
+runs:
+  using: "composite"
+  steps:
+  - name: Configure TLS
+    run: |
+      echo "${{ inputs.kube_cert }}" > ca.crt
+    shell: bash
+
+  - name: Kubernetes Auth
+    run: |
+      kubectl config set-cluster ${{ inputs.kube_cluster }} --certificate-authority=./ca.crt --server="https://${{ inputs.kube_cluster }}"
+      kubectl config set-credentials ${{ inputs.kube_service_account }} --token=${{ inputs.kube_token }}
+    shell: bash
+
+  - name: Configure kubecontext
+    run: |
+      kubectl config set-context ${{ inputs.kube_cluster }} --cluster=${{ inputs.kube_cluster }} --user=${{ inputs.kube_service_account }} --namespace=${{ inputs.kube_namespace }}
+      kubectl config use-context ${{ inputs.kube_cluster }}
+    shell: bash
