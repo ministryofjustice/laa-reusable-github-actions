@@ -88,13 +88,13 @@ jobs:
 
       - name: Kube Authentication
         id: auth
-        uses: ./.github/actions/kube-auth
+        uses: ./.github/actions/authenticate_to_cluster
         with:
-          k8s_cluster_name: ${{ secrets.KUBE_CLUSTER }}
-          k8s_namespace: ${{ secrets.KUBE_NAMESPACE }}
-          k8s_service_account: cd-serviceaccount
-          k8s_token: "${{ secrets.KUBE_TOKEN }}"
-          k8s_cert: ${{ secrets.KUBE_CERT }}
+          kube-cluster: ${{ secrets.KUBE_CLUSTER }}
+          kube-namespace : ${{ secrets.KUBE_NAMESPACE }}
+          kube-sa: ${{ inputs.k8s_service_account }}
+          kube-token: "${{ secrets.KUBE_TOKEN }}"
+          kube-cert: ${{ secrets.KUBE_CERT }}
 
       - name: Helm Deploy
         id: deploy
