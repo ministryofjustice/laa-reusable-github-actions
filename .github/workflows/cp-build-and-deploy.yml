@@ -73,7 +73,7 @@ jobs:
         id: auth
         uses: ./.github/actions/ecr-auth
         with:
-          ecr_region: ${{ var.ECR_REGION }}
+          ecr_region: ${{ vars.ECR_REGION }}
           ecr_role: ${{ secrets.ECR_ROLE_TO_ASSUME }}
 
       - name: Build and Push
