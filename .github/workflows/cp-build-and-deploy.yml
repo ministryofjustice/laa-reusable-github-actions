@@ -38,7 +38,22 @@ on:
         description: "Any additional helm arguments"
         required: true
         type: string
-
+    secrets:
+      ECR_REGISTRY_URL:
+        description: "ECR Registry URL"
+        required: true
+      KUBE_CLUSTER:
+        description: "Kubernetes Cluster Name"
+        required: true
+      KUBE_NAMESPACE:
+        description: "Kubernetes Namespace"
+        required: true
+      KUBE_TOKEN:
+        description: "Kubernetes Authentication Token"
+        required: true
+      KUBE_CERT:
+        description: "Kubernetes Cluster Certificate"
+        required: true
 
 jobs:
   build_and_push:
