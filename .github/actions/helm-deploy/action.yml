@@ -1,0 +1,35 @@
+name: Helm Deploy
+description: Deploy a Helm Chart to Kubernetes
+
+inputs:
+  k8s_namespace:
+    required: true
+    description: "Kubernetes Namespace"
+  helm_release_name:
+    required: true
+    description: "Helm Release Name"
+  helm_chart:
+    required: true
+    description: "Helm Chart"
+  helm_values_path:
+    required: true
+    description: "Path To Helm Values"
+  helm_additional_args:
+    required: false
+    description: "Any Additional Helm input params"
+  helm_timeout:
+    required: true
+    description: "Helm Timeout"
+    default: 300s
+
+runs:
+  using: "composite"
+
+  steps:
+  - name: Helm Deploy
+    run: |
+      helm install ${{ inputs.helm_release_name }} ${{ inputs.helm_chart }} \
+        -f ${{ inputs.helm_values_path }} \
+        ${{ inputs.helm_additional_args }}
+        --wait --timeout ${{ inputs.helm_timeout }}
+    shell: bash

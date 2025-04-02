@@ -14,7 +14,7 @@ inputs:
     description: "Kubernetes namespace"
     required: true
   kube_service_account:
-    required: false
+    required: true
     description: "Kubernetes Service Account"
 
 runs:
