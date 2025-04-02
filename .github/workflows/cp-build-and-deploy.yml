@@ -9,7 +9,7 @@ on:
         type: string
       dockerfile_path:
         description: "Path to build Dockerfile"
-        required: true
+        required: false
         type: string
         default: Dockerfile #--Dockerfile in current working directory
       image_tag:
