@@ -21,6 +21,16 @@ inputs:
     required: true
     description: "Helm Timeout"
     default: 300s
+  #--Combine the 3 values below for a full image URI if needed
+  image_registry:
+    required: true
+    description: "Image Registry URL"
+  image_repo:
+    required: true
+    description: "Image Repository Path"
+  image_tag:
+    required: true
+    description: "Image Tag"
 
 runs:
   using: "composite"
@@ -30,6 +40,9 @@ runs:
     run: |
       helm install ${{ inputs.helm_release_name }} ${{ inputs.helm_chart }} \
         -f ${{ inputs.helm_values_path }} \
+        --set image.registry=${{ inputs.image_registry }} \
+        --set image.repository=${{ inputs.image_repo }} \
+        --set image.tag=${{ inputs.image_tag }} \
+        --wait --timeout ${{ inputs.helm_timeout }} \
         ${{ inputs.helm_additional_args }}
-        --wait --timeout ${{ inputs.helm_timeout }}
     shell: bash
