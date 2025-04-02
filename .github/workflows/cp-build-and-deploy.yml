@@ -14,12 +14,12 @@ on:
         default: Dockerfile #--Dockerfile in current working directory
       image_tag:
         description: "Image Tag"
-        required: true
+        required: false
         type: string
         default: ${{ github.sha }}
       k8s_service_account:
         description: "Service Account for Kubernetes Authentication"
-        required: true
+        required: false
         type: string
         default: cd-serviceaccount
       helm_release_name:
