@@ -57,28 +57,28 @@ jobs:
           ecr_region: ${{ vars.ECR_REGION }}
           ecr_role: ${{ secrets.ECR_ROLE_TO_ASSUME }}
 
-  #     - name: Build and Push
-  #       id: build
-  #       uses: ministryofjustice/laa-reusable-github-actions/.github/actions/build-and-push
-  #       with:
-  #         dockerfile_path: ${{ inputs.dockerfile_path }}
-  #         image_registry: ${{ steps.auth.outputs.image_registry }}
-  #         image_repo: ${{ vars.ECR_REPOSITORY }}
-  #         image_tag: ${{ inputs.image_tag }}
+      - name: Build and Push
+        id: build
+        uses: ministryofjustice/laa-reusable-github-actions/.github/actions/build-and-push@feat/add-cp-functions
+        with:
+          dockerfile_path: ${{ inputs.dockerfile_path }}
+          image_registry: ${{ steps.auth.outputs.image_registry }}
+          image_repo: ${{ vars.ECR_REPOSITORY }}
+          image_tag: ${{ inputs.image_tag }}
 
-  #     - name: Output
-  #       id: output
-  #       run: |
-  #           echo image_registry=${{ steps.build.outputs.image_registry }} >> "$GITHUB_OUTPUT"
-  #           echo image_repo=${{ steps.build.outputs.image_repo }} >> "$GITHUB_OUTPUT"
-  #           echo image_tag=${{ steps.build.outputs.image_tag }} >> "$GITHUB_OUTPUT"
-  #           echo image_uri="${{ steps.build.outputs.image_registry }}/${{ steps.build.outputs.image_repo }}:${{ steps.build.outputs.image_tag }}" >> "$GITHUB_OUTPUT"
+      - name: Output
+        id: output
+        run: |
+            echo image_registry=${{ steps.build.outputs.image_registry }} >> "$GITHUB_OUTPUT"
+            echo image_repo=${{ steps.build.outputs.image_repo }} >> "$GITHUB_OUTPUT"
+            echo image_tag=${{ steps.build.outputs.image_tag }} >> "$GITHUB_OUTPUT"
+            echo image_uri="${{ steps.build.outputs.image_registry }}/${{ steps.build.outputs.image_repo }}:${{ steps.build.outputs.image_tag }}" >> "$GITHUB_OUTPUT"
 
-  #   outputs:
-  #     image_registry: ${{ steps.output.outputs.image_registry }}
-  #     image_repo: ${{ steps.output.outputs.image_repo }}
-  #     image_tag: ${{ steps.output.outputs.image_tag }}
-  #     image_uri: ${{ steps.output.outputs.image_uri }}
+    outputs:
+      image_registry: ${{ steps.output.outputs.image_registry }}
+      image_repo: ${{ steps.output.outputs.image_repo }}
+      image_tag: ${{ steps.output.outputs.image_tag }}
+      image_uri: ${{ steps.output.outputs.image_uri }}
 
   # helm_deploy:
   #   permissions:
