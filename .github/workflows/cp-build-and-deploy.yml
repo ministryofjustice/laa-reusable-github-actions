@@ -52,7 +52,7 @@ jobs:
 
       - name: ECR Auth
         id: auth
-        uses: ./.github/actions/ecr-auth
+        uses: ministryofjustice/laa-reusable-github-actions/.github/actions/ecr-auth/@feat/add-cp-functions
         with:
           ecr_region: ${{ vars.ECR_REGION }}
           ecr_role: ${{ secrets.ECR_ROLE_TO_ASSUME }}
