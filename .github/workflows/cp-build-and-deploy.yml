@@ -50,12 +50,12 @@ jobs:
       - name: Git Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 #--v4.2.2
 
-      # - name: ECR Auth
-      #   id: auth
-      #   uses: ministryofjustice/laa-reusable-github-actions/.github/actions/ecr-auth
-      #   with:
-      #     ecr_region: ${{ vars.ECR_REGION }}
-      #     ecr_role: ${{ secrets.ECR_ROLE_TO_ASSUME }}
+      - name: ECR Auth
+        id: auth
+        uses: ministryofjustice/laa-reusable-github-actions/ecr-auth
+        with:
+          ecr_region: ${{ vars.ECR_REGION }}
+          ecr_role: ${{ secrets.ECR_ROLE_TO_ASSUME }}
 
   #     - name: Build and Push
   #       id: build
