@@ -36,7 +36,7 @@ on:
         type: string
       helm_additional_args:
         description: "Any additional helm arguments"
-        required: true
+        required: false
         type: string
 
 jobs:
