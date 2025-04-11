@@ -101,16 +101,15 @@ jobs:
           kube-token: "${{ secrets.KUBE_TOKEN }}"
           kube-cert: ${{ secrets.KUBE_CERT }}
 
-
-  #     - name: Helm Deploy
-  #       id: deploy
-  #       uses: ministryofjustice/laa-reusable-github-actions/.github/actions/helm-deploy
-  #       with:
-  #         k8s_namespace: ${{ secrets.KUBE_NAMESPACE }}
-  #         helm_release_name: ${{ inputs.helm_release_name }}
-  #         helm_chart: ${{ inputs.helm_chart }}
-  #         helm_values_path: ${{ inputs.helm_values_path }}
-  #         helm_additional_args: ${{ inputs.helm_additional_args }}
-  #         image_registry: ${{needs.build_and_push.outputs.image_registry}}
-  #         image_repo: ${{needs.build_and_push.outputs.image_repo}}
-  #         image_tag: ${{needs.build_and_push.outputs.image_tag}}
+      - name: Helm Deploy
+        id: deploy
+        uses: ministryofjustice/laa-reusable-github-actions/.github/actions/helm-deploy
+        with:
+          k8s_namespace: ${{ secrets.KUBE_NAMESPACE }}
+          helm_release_name: ${{ inputs.helm_release_name }}
+          helm_chart: ${{ inputs.helm_chart }}
+          helm_values_path: ${{ inputs.helm_values_path }}
+          helm_additional_args: ${{ inputs.helm_additional_args }}
+          image_registry: ${{needs.build_and_push.outputs.image_registry}}
+          image_repo: ${{needs.build_and_push.outputs.image_repo}}
+          image_tag: ${{needs.build_and_push.outputs.image_tag}}
