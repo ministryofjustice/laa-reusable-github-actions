@@ -93,7 +93,7 @@ jobs:
 
       - name: Kube Authentication
         id: auth
-        uses: ministryofjustice/laa-reusable-github-actions/.github/actions/build-and-push@feat/add-cp-functions
+        uses: ministryofjustice/laa-reusable-github-actions/.github/actions/authenticate_to_cluster@feat/add-cp-functions
         with:
           kube-cluster: ${{ secrets.KUBE_CLUSTER }}
           kube-namespace : ${{ secrets.KUBE_NAMESPACE }}
