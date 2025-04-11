@@ -103,7 +103,7 @@ jobs:
 
       - name: Helm Deploy
         id: deploy
-        uses: ministryofjustice/laa-reusable-github-actions/.github/actions/helm-deploy
+        uses: ministryofjustice/laa-reusable-github-actions/.github/actions/helm-deploy@feat/add-cp-functions
         with:
           k8s_namespace: ${{ secrets.KUBE_NAMESPACE }}
           helm_release_name: ${{ inputs.helm_release_name }}
