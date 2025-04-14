@@ -1,0 +1,17 @@
+name: Secret Detection
+description: Detect any secrets commit in the clear to repo
+
+inputs:
+  trufflehog_args:
+    required: false
+    description: Trufflehog Aguments
+    default: --max-depth=0 #--Current commit only
+
+runs:
+  using: "composite"
+
+  steps:
+  - name: Trufflehog Scan
+    uses: trufflesecurity/trufflehog@690e5c7aff8347c3885096f3962a0633d9129607 #--v3.88.23
+    with:
+      extra_args: ${{ inputs.trufflehog_args }}
