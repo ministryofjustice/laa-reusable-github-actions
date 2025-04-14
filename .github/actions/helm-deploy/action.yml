@@ -36,14 +36,14 @@ runs:
   using: "composite"
 
   steps:
+  - name: Get Context
+    run: kubectl config get-contexts
+
+  - name: List Installs
+    run: helm list -n ${{ inputs.k8s_namespace }}
+
   - name: Helm Deploy
     run: |
-      echo "HELM LISTING"
-      helm list
-      echo "CURRENT CONTEXT"
-      kubectl config get-contexts
-      echo "TRYING INSTALL"
-
       helm install ${{ inputs.helm_release_name }} ${{ inputs.helm_chart }} \
         -f ${{ inputs.helm_values_path }} \
         --namespace=${{ inputs.k8s_namespace }}
