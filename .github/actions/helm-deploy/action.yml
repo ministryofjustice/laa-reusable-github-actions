@@ -38,9 +38,11 @@ runs:
   steps:
   - name: Get Context
     run: kubectl config get-contexts
+    shell: bash
 
   - name: List Installs
     run: helm list -n ${{ inputs.k8s_namespace }}
+    shell: bash
 
   - name: Helm Deploy
     run: |
