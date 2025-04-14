@@ -19,7 +19,7 @@ on:
         default: ${{ github.sha }}
 
 jobs:
-  build_and_push:
+  cp_build_push:
     runs-on: ubuntu-latest
     permissions:
       id-token: write

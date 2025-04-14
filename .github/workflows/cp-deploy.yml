@@ -42,7 +42,7 @@ on:
         type: string
 
 jobs:
-  helm_deploy:
+  cp_deploy:
     permissions:
       id-token: write
       contents: read
