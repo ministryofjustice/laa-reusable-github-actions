@@ -40,6 +40,7 @@ runs:
     run: |
       helm install ${{ inputs.helm_release_name }} ${{ inputs.helm_chart }} \
         -f ${{ inputs.helm_values_path }} \
+        --namespace=${{ inputs.k8s_namespace }}
         --set image.registry=${{ inputs.image_registry }} \
         --set image.repository=${{ inputs.image_repo }} \
         --set image.tag=${{ inputs.image_tag }} \
