@@ -11,7 +11,7 @@ on:
         description: "Path to build Dockerfile"
         required: false
         type: string
-        default: Dockerfile #--Dockerfile in current working directory
+        default: Dockerfile
       image_tag:
         description: "Image Tag"
         required: false
@@ -40,7 +40,7 @@ on:
         type: string
 
 jobs:
-  cp_build_and_push:
+  build_and_push:
     uses: ministryofjustice/laa-reusable-github-actions/.github/workflows/cp-build-push.yml@feat/add-cp-functions
     with:
       environment: ${{ inputs.environment }}
@@ -48,14 +48,14 @@ jobs:
       image_tag: ${{ inputs.image_tag }}
     secrets: inherit
 
-  cp_helm_deploy:
-    needs: cp_build_and_push
+  helm_deploy:
+    needs: build_and_push
     uses: ministryofjustice/laa-reusable-github-actions/.github/workflows/cp-deploy.yml@feat/add-cp-functions
     with:
       environment: ${{ inputs.environment }}
-      image_repo: ${{ needs.cp_build_and_push.outputs.image_repo }}
-      image_registry: ${{ needs.cp_build_and_push.outputs.image_registry }}
-      image_tag: ${{ needs.cp_build_and_push.outputs.image_tag }}
+      image_repo: ${{ needs.build_and_push.outputs.image_repo }}
+      image_registry: ${{ needs.build_and_push.outputs.image_registry }}
+      image_tag: ${{ needs.build_and_push.outputs.image_tag }}
       k8s_service_account: ${{ inputs.k8s_service_account }}
       helm_release_name: ${{ inputs.helm_release_name }}
       helm_chart: ${{ inputs.helm_chart }}
