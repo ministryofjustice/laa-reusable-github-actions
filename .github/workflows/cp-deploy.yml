@@ -42,13 +42,20 @@ on:
         type: string
 
 jobs:
-  cp_deploy:
+  helm_deploy:
     permissions:
       id-token: write
       contents: read
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     steps:
+    - name: Debug1
+      run: echo ${{ inputs.image_registry }}
+    - name: Debug2
+      run: echo ${{ inputs.image_repo }}
+    - name: Debug3
+      run: echo ${{ inputs.image_tag }}
+
     - name: Git Checkout
       uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 #--v4.2.2
 
