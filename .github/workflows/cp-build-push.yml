@@ -45,14 +45,14 @@ jobs:
 
     - name: ECR Auth
       id: auth
-      uses: ministryofjustice/laa-reusable-github-actions/.github/actions/ecr-auth/@feat/add-cp-functions
+      uses: ministryofjustice/laa-reusable-github-actions/.github/actions/ecr-auth/@main
       with:
         ecr_region: ${{ vars.ECR_REGION }}
         ecr_role: ${{ secrets.ECR_ROLE_TO_ASSUME }}
 
     - name: Build and Push
       id: build
-      uses: ministryofjustice/laa-reusable-github-actions/.github/actions/build-and-push@feat/add-cp-functions
+      uses: ministryofjustice/laa-reusable-github-actions/.github/actions/build-and-push@main
       with:
         dockerfile_path: ${{ inputs.dockerfile_path }}
         image_registry: ${{ steps.auth.outputs.image_registry }}
@@ -68,8 +68,8 @@ jobs:
         echo image_uri="${{ steps.build.outputs.image_registry }}/${{ steps.build.outputs.image_repo }}:${{ steps.build.outputs.image_tag }}" >> "$GITHUB_OUTPUT"
 
     - name: Image Scan
-      id: scan
-      uses: ministryofjustice/laa-reusable-github-actions/.github/actions/image-scan@feat/add-cp-functions
+      id: scan-post
+      uses: ministryofjustice/laa-reusable-github-actions/.github/actions/image-scan@main
       with:
         image_uri: ${{ steps.output.outputs.image_uri }}
 

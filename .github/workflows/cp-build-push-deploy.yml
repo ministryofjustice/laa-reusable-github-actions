@@ -11,7 +11,7 @@ on:
         description: "Path to build Dockerfile"
         required: false
         type: string
-        default: Dockerfile
+        default: Dockerfile #--Dockerfile in current working directory
       image_tag:
         description: "Image Tag"
         required: false
@@ -41,7 +41,7 @@ on:
 
 jobs:
   build_and_push:
-    uses: ministryofjustice/laa-reusable-github-actions/.github/workflows/cp-build-push.yml@feat/add-cp-functions
+    uses: ministryofjustice/laa-reusable-github-actions/.github/workflows/cp-build-push.yml@main
     with:
       environment: ${{ inputs.environment }}
       dockerfile_path: ${{ inputs.dockerfile_path }}
@@ -50,7 +50,7 @@ jobs:
 
   helm_deploy:
     needs: build_and_push
-    uses: ministryofjustice/laa-reusable-github-actions/.github/workflows/cp-deploy.yml@feat/add-cp-functions
+    uses: ministryofjustice/laa-reusable-github-actions/.github/workflows/cp-deploy.yml@main
     with:
       environment: ${{ inputs.environment }}
       image_repo: ${{ needs.build_and_push.outputs.image_repo }}
