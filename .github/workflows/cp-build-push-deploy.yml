@@ -49,7 +49,7 @@ jobs:
     secrets: inherit
 
   cp_helm_deploy:
-    needs: build_and_push
+    needs: cp_build_and_push
     uses: ministryofjustice/laa-reusable-github-actions/.github/workflows/cp-deploy.yml@feat/add-cp-functions
     with:
       environment: ${{ inputs.environment }}
