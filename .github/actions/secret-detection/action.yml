@@ -11,9 +11,6 @@ runs:
   using: "composite"
 
   steps:
-  - name: Git Checkout
-    uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 #--v4.2.2
-
   - name: Trufflehog Scan
     uses: trufflesecurity/trufflehog@690e5c7aff8347c3885096f3962a0633d9129607 #--v3.88.23
     with:
