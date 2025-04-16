@@ -1,0 +1,25 @@
+name: Scan a Helm Chart for security issues and misconfigurations
+description: Detect any common security issues and misconfigurations in a helm chart and values
+
+inputs:
+  helm_chart:
+    required: true
+    description: "Helm chart to use for templating"
+  helm_values:
+    required: true
+    description: "One or more values manifests in YAML format"
+  kube_score_additional_params:
+    required: false
+    description: "Any additional params to pass to kube-score"
+
+runs:
+  using: "composite"
+
+  steps:
+  - name: Setup Kube Tools
+    uses: yokawasa/action-setup-kube-tools@9e25a4277af127b60011c95b6ed2da7e3b3613b1 #--v0.11.2
+    shell: bash
+
+  - name: Kube Score
+    run: helm template ${{ inputs.helm_chart }} -f ${{ inputs.helm_values }} | kube-score ${{ inputs.kube_score_additional_params }} score -
+    shell: bash
