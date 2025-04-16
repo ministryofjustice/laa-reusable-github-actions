@@ -17,9 +17,10 @@ runs:
 
   steps:
   - name: Setup Kube Tools
+    id: setup
     uses: yokawasa/action-setup-kube-tools@9e25a4277af127b60011c95b6ed2da7e3b3613b1 #--v0.11.2
-    shell: bash
 
   - name: Kube Score
+    id: kube-score
     run: helm template ${{ inputs.helm_chart }} -f ${{ inputs.helm_values }} | kube-score ${{ inputs.kube_score_additional_params }} score -
     shell: bash
