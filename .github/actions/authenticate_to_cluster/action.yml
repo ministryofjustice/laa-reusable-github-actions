@@ -13,20 +13,25 @@ inputs:
   kube-namespace:
     description: "Kubernetes cluster namespace"
     required: true
+  kube-sa:
+    description: "Kubernetes Service Account"
+    required: true
+    default: deploy-user
 
 runs:
   using: "composite"
   steps:
-    - name: Authenticate to the cluster
-      shell: bash
-      env:
-        KUBE_CERT: ${{ inputs.kube-cert }}
-        KUBE_TOKEN: ${{ inputs.kube-token }}
-        KUBE_CLUSTER: ${{ inputs.kube-cluster }}
-        KUBE_NAMESPACE: ${{ inputs.kube-namespace }}
-      run: |
-        echo "${KUBE_CERT}" > ca.crt
-        kubectl config set-cluster ${KUBE_CLUSTER} --certificate-authority=./ca.crt --server=https://${KUBE_CLUSTER}
-        kubectl config set-credentials deploy-user --token=${KUBE_TOKEN}
-        kubectl config set-context ${KUBE_CLUSTER} --cluster=${KUBE_CLUSTER} --user=deploy-user --namespace=${KUBE_NAMESPACE}
-        kubectl config use-context ${KUBE_CLUSTER}
+  - name: Authenticate to the cluster
+    shell: bash
+    env:
+      KUBE_CERT: ${{ inputs.kube-cert }}
+      KUBE_TOKEN: ${{ inputs.kube-token }}
+      KUBE_CLUSTER: ${{ inputs.kube-cluster }}
+      KUBE_NAMESPACE: ${{ inputs.kube-namespace }}
+      KUBE_SERVICE_ACCOUNT: ${{ inputs.kube-sa}}
+    run: |
+      echo "${KUBE_CERT}" > ca.crt
+      kubectl config set-cluster ${KUBE_CLUSTER} --certificate-authority=./ca.crt --server=https://${KUBE_CLUSTER}
+      kubectl config set-credentials ${KUBE_SERVICE_ACCOUNT} --token=${KUBE_TOKEN}
+      kubectl config set-context ${KUBE_CLUSTER} --cluster=${KUBE_CLUSTER} --user=${KUBE_SERVICE_ACCOUNT} --namespace=${KUBE_NAMESPACE}
+      kubectl config use-context ${KUBE_CLUSTER}

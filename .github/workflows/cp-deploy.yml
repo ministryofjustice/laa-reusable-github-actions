@@ -1,0 +1,76 @@
+name: Deploy image to Cloud Platform using Helm
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: "Deployment Environment"
+        required: false
+        type: string
+      image_repo:
+        description: "Image Repository"
+        required: true
+        type: string
+      image_registry:
+        description: "Image Registry"
+        required: true
+        type: string
+      image_tag:
+        description: "Image Tag"
+        required: true
+        type: string
+      k8s_service_account:
+        description: "Service Account for Kubernetes Authentication"
+        required: false
+        type: string
+        default: cd-serviceaccount
+      helm_release_name:
+        description: "Release Name for helm install"
+        required: true
+        type: string
+      helm_chart:
+        description: "Helm chart to use for release"
+        required: true
+        type: string
+      helm_values_path:
+        description: "Path to values for helm deployment"
+        required: true
+        type: string
+      helm_additional_args:
+        description: "Any additional helm arguments"
+        required: false
+        type: string
+
+jobs:
+  helm_deploy:
+    permissions:
+      id-token: write
+      contents: read
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+    - name: Git Checkout
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 #--v4.2.2
+
+    - name: Kube Authentication
+      id: auth
+      uses: ministryofjustice/laa-reusable-github-actions/.github/actions/authenticate_to_cluster@main
+      with:
+        kube-cluster: ${{ secrets.KUBE_CLUSTER }}
+        kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
+        kube-sa: ${{ inputs.k8s_service_account }}
+        kube-token: "${{ secrets.KUBE_TOKEN }}"
+        kube-cert: ${{ secrets.KUBE_CERT }}
+
+    - name: Helm Deploy
+      id: deploy
+      uses: ministryofjustice/laa-reusable-github-actions/.github/actions/helm-deploy@main
+      with:
+        k8s_namespace: ${{ secrets.KUBE_NAMESPACE }}
+        helm_release_name: ${{ inputs.helm_release_name }}
+        helm_chart: ${{ inputs.helm_chart }}
+        helm_values_path: ${{ inputs.helm_values_path }}
+        helm_additional_args: ${{ inputs.helm_additional_args }}
+        image_registry: ${{ inputs.image_registry }}
+        image_repo: ${{ inputs.image_repo }}
+        image_tag: ${{ inputs.image_tag }}

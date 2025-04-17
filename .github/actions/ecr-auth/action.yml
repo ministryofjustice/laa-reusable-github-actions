@@ -1,0 +1,30 @@
+name: ecr-auth
+description: Authenticate with AWS ECR
+
+inputs:
+  ecr_region:
+    required: true
+    description: "ECR Region"
+  ecr_role:
+    required: true
+    description: "IAM Role to Assume for ECR"
+
+outputs:
+  image_registry:
+    description: "Image Registry URL"
+    value: ${{ steps.login.outputs.registry }}
+
+runs:
+  using: "composite"
+
+  steps:
+  - name: AWS Auth
+    id: auth
+    uses: aws-actions/configure-aws-credentials@ececac1a45f3b08a01d2dd070d28d111c5fe6722 #--4.1.0
+    with:
+      role-to-assume: ${{ inputs.ecr_role }}
+      aws-region: ${{ inputs.ecr_region }}
+
+  - name: ECR Login
+    id: login
+    uses: aws-actions/amazon-ecr-login@062b18b96a7aff071d4dc91bc00c4c1a7945b076 #--2.0.1

@@ -1,0 +1,64 @@
+name: Build image, push to ECR, scan for vulns and deploy to Cloud Platform
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: "Deployment Environment"
+        required: false
+        type: string
+      dockerfile_path:
+        description: "Path to build Dockerfile"
+        required: false
+        type: string
+        default: Dockerfile #--Dockerfile in current working directory
+      image_tag:
+        description: "Image Tag"
+        required: false
+        type: string
+        default: ${{ github.sha }}
+      k8s_service_account:
+        description: "Service Account for Kubernetes Authentication"
+        required: false
+        type: string
+        default: cd-serviceaccount
+      helm_release_name:
+        description: "Release Name for helm install"
+        required: true
+        type: string
+      helm_chart:
+        description: "Helm chart to use for release"
+        required: true
+        type: string
+      helm_values_path:
+        description: "Path to values for helm deployment"
+        required: true
+        type: string
+      helm_additional_args:
+        description: "Any additional helm arguments"
+        required: false
+        type: string
+
+jobs:
+  build_and_push:
+    uses: ministryofjustice/laa-reusable-github-actions/.github/workflows/cp-build-push.yml@main
+    with:
+      environment: ${{ inputs.environment }}
+      dockerfile_path: ${{ inputs.dockerfile_path }}
+      image_tag: ${{ inputs.image_tag }}
+    secrets: inherit
+
+  helm_deploy:
+    needs: build_and_push
+    uses: ministryofjustice/laa-reusable-github-actions/.github/workflows/cp-deploy.yml@main
+    with:
+      environment: ${{ inputs.environment }}
+      image_repo: ${{ needs.build_and_push.outputs.image_repo }}
+      image_registry: ${{ needs.build_and_push.outputs.image_registry }}
+      image_tag: ${{ needs.build_and_push.outputs.image_tag }}
+      k8s_service_account: ${{ inputs.k8s_service_account }}
+      helm_release_name: ${{ inputs.helm_release_name }}
+      helm_chart: ${{ inputs.helm_chart }}
+      helm_values_path: ${{ inputs.helm_values_path }}
+      helm_additional_args: ${{ inputs.helm_additional_args }}
+    secrets: inherit

@@ -1,0 +1,80 @@
+name: Build image, push to ECR and scan for vulns
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: "Deployment Environment"
+        required: false
+        type: string
+      dockerfile_path:
+        description: "Path to build Dockerfile"
+        required: false
+        type: string
+        default: Dockerfile #--Dockerfile in current working directory
+      image_tag:
+        description: "Image Tag"
+        required: false
+        type: string
+        default: ${{ github.sha }}
+    outputs:
+      image_registry:
+        description: "Image Registry"
+        value: ${{ jobs.build_push.outputs.image_registry }}
+      image_repo:
+        description: "Image Registry"
+        value: ${{ jobs.build_push.outputs.image_repo }}
+      image_tag:
+        description: "Image Registry"
+        value: ${{ jobs.build_push.outputs.image_tag }}
+      image_uri:
+        description: "Image Registry"
+        value: ${{ jobs.build_push.outputs.image_uri }}
+
+jobs:
+  build_push:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    environment: ${{ inputs.environment }}
+
+    steps:
+    - name: Git Checkout
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 #--v4.2.2
+
+    - name: ECR Auth
+      id: auth
+      uses: ministryofjustice/laa-reusable-github-actions/.github/actions/ecr-auth/@main
+      with:
+        ecr_region: ${{ vars.ECR_REGION }}
+        ecr_role: ${{ secrets.ECR_ROLE_TO_ASSUME }}
+
+    - name: Build and Push
+      id: build
+      uses: ministryofjustice/laa-reusable-github-actions/.github/actions/build-and-push@main
+      with:
+        dockerfile_path: ${{ inputs.dockerfile_path }}
+        image_registry: ${{ steps.auth.outputs.image_registry }}
+        image_repo: ${{ vars.ECR_REPOSITORY }}
+        image_tag: ${{ inputs.image_tag }}
+
+    - name: Output
+      id: output
+      run: |
+        echo image_registry=${{ steps.build.outputs.image_registry }} >> "$GITHUB_OUTPUT"
+        echo image_repo=${{ steps.build.outputs.image_repo }} >> "$GITHUB_OUTPUT"
+        echo image_tag=${{ steps.build.outputs.image_tag }} >> "$GITHUB_OUTPUT"
+        echo image_uri="${{ steps.build.outputs.image_registry }}/${{ steps.build.outputs.image_repo }}:${{ steps.build.outputs.image_tag }}" >> "$GITHUB_OUTPUT"
+
+    - name: Image Scan
+      id: scan-post
+      uses: ministryofjustice/laa-reusable-github-actions/.github/actions/image-scan@main
+      with:
+        image_uri: ${{ steps.output.outputs.image_uri }}
+
+    outputs:
+      image_registry: ${{ steps.output.outputs.image_registry }}
+      image_repo: ${{ steps.output.outputs.image_repo }}
+      image_tag: ${{ steps.output.outputs.image_tag }}
+      image_uri: ${{ steps.output.outputs.image_uri }}
