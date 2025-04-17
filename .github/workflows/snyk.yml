@@ -48,6 +48,14 @@ jobs:
         image: ${{ inputs.tag }}:scan
         args: --file=Dockerfile
 
+    - name: Replace security-severity "null" for license-related findings 
+      run: |
+        sed -i 's/"security-severity": "null"/"security-severity": "0"/g' snyk.sarif
+
+    - name: Replace security-severity "undefined" for license-related findings 
+      run: |
+        sed -i 's/"security-severity": "undefined"/"security-severity": "0"/g' snyk.sarif
+
     - name: Upload result to GitHub Code Scanning
       uses: github/codeql-action/upload-sarif@45775bd8235c68ba998cffa5171334d58593da47 #--v3.28.15
       with:
