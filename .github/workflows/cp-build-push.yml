@@ -1,4 +1,4 @@
-name: Build Image and Deploy to Cloud Platform
+name: Build image, push to ECR and scan for vulns
 
 on:
   workflow_call:

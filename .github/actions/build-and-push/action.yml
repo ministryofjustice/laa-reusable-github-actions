@@ -1,5 +1,5 @@
 name: Build and Push Image
-description: Build Image and Push to a Container Registry
+description: Build and image and push to a container registry
 
 inputs:
   image_registry:
@@ -38,15 +38,15 @@ runs:
   - name: Docker Build
     id: build_and_push
     run: |
-        docker build . -t ${{ inputs.image_registry }}/${{ inputs.image_repo }}:${{ inputs.image_tag }} -f ${{ inputs.dockerfile_path }}
-        docker push ${{ inputs.image_registry }}/${{ inputs.image_repo }}:${{ inputs.image_tag }}
+      docker build . -t ${{ inputs.image_registry }}/${{ inputs.image_repo }}:${{ inputs.image_tag }} -f ${{ inputs.dockerfile_path }}
+      docker push ${{ inputs.image_registry }}/${{ inputs.image_repo }}:${{ inputs.image_tag }}
     shell: bash
 
   - name: Output
     id: output
     run: |
-        echo image_registry=${{ inputs.image_registry }} >> "$GITHUB_OUTPUT"
-        echo image_repo=${{ inputs.image_repo }} >> "$GITHUB_OUTPUT"
-        echo image_tag=${{ inputs.image_tag }} >> "$GITHUB_OUTPUT"
-        echo image_uri="${{ inputs.image_registry }}/${{ inputs.image_repo }}:${{ inputs.image_tag }}"
+      echo image_registry=${{ inputs.image_registry }} >> "$GITHUB_OUTPUT"
+      echo image_repo=${{ inputs.image_repo }} >> "$GITHUB_OUTPUT"
+      echo image_tag=${{ inputs.image_tag }} >> "$GITHUB_OUTPUT"
+      echo image_uri="${{ inputs.image_registry }}/${{ inputs.image_repo }}:${{ inputs.image_tag }}"
     shell: bash
