@@ -1,4 +1,4 @@
-name: Build image, push to ECR, scan for vulns and deploy to Cloud Platform
+name: CP - Build image, push to ECR, scan for vulns and deploy to Cloud Platform
 
 on:
   workflow_call:
