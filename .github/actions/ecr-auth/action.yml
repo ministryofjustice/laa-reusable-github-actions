@@ -8,6 +8,9 @@ inputs:
   ecr_role:
     required: true
     description: "IAM Role to Assume for ECR"
+  role-session-name:
+    required: true
+    description: "Unique Role Session Name"
 
 outputs:
   image_registry:
@@ -24,6 +27,7 @@ runs:
     with:
       role-to-assume: ${{ inputs.ecr_role }}
       aws-region: ${{ inputs.ecr_region }}
+      role-session-name: ${{ inputs.role-session-name }}
 
   - name: ECR Login
     id: login
