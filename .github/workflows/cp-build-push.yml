@@ -12,6 +12,10 @@ on:
         required: false
         type: string
         default: Dockerfile #--Dockerfile in current working directory
+      app_name:
+        description: "App Name"
+        required: true
+        type: string
       image_tag:
         description: "Image Tag"
         required: false
@@ -49,6 +53,7 @@ jobs:
       with:
         ecr_region: ${{ vars.ECR_REGION }}
         ecr_role: ${{ secrets.ECR_ROLE_TO_ASSUME }}
+        role-session-name: "github-cicd-${{ inputs.app_name }}-${{ github.run_number }}"
 
     - name: Build and Push
       id: build
