@@ -11,6 +11,9 @@ inputs:
   role-session-name:
     required: true
     description: "Unique Role Session Name"
+  account_ids:
+    required: false
+    description: "List of AWS Account IDs for ECR Auth"
 
 outputs:
   image_registry:
@@ -32,3 +35,5 @@ runs:
   - name: ECR Login
     id: login
     uses: aws-actions/amazon-ecr-login@062b18b96a7aff071d4dc91bc00c4c1a7945b076 #--2.0.1
+    with:
+      registries: ${{ inputs.account_ids }}
