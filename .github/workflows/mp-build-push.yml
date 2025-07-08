@@ -53,7 +53,7 @@ jobs:
       uses: ministryofjustice/laa-reusable-github-actions/.github/actions/ecr-auth/@main
       with:
         ecr_region: ${{ vars.AWS_REGION }}
-        ecr_role: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/modernisation-platform-oidc-cicd
+        ecr_role: arn:aws:iam::${{ secrets.ECR_ACCOUNT_ID }}:role/modernisation-platform-oidc-cicd
         role-session-name: "github-cicd-${{ inputs.app_name }}-${{ github.run_number }}"
 
     - name: Build and Push
