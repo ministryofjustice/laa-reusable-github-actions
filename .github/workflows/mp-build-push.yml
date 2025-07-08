@@ -16,6 +16,10 @@ on:
         description: "App Name"
         required: true
         type: string
+      image_repo:
+        description: "ECR Repo Name"
+        required: true
+        type: string
       image_tag:
         description: "Image Tag"
         required: false
