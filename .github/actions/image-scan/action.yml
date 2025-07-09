@@ -5,6 +5,9 @@ inputs:
   image_uri:
     required: true
     description: "URI of image to scan"
+  allow_failures:
+    required: true
+    description: "Proceed on failures"
 
 runs:
   using: "composite"
@@ -28,7 +31,7 @@ runs:
       image-ref: ${{ inputs.image_uri }}
       format: 'table'
       exit-code: '0'
-      ignore-unfixed: true
+      ignore-unfixed: ${{ inputs.allow_failures }}
       vuln-type: 'os,library'
       severity: 'UNKNOWN,LOW,MEDIUM'
     env:

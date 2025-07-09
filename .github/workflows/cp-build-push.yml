@@ -21,6 +21,10 @@ on:
         required: false
         type: string
         default: ${{ github.sha }}
+      allow_image_scan_failures:
+        description: "Allow image scanner to proceed on failures"
+        type: boolean
+        default: false
     outputs:
       image_registry:
         description: "Image Registry"
@@ -77,6 +81,7 @@ jobs:
       uses: ministryofjustice/laa-reusable-github-actions/.github/actions/image-scan@main
       with:
         image_uri: ${{ steps.output.outputs.image_uri }}
+        allow_failures: ${{ inputs.allow_image_scan_failures }}
 
     outputs:
       image_registry: ${{ steps.output.outputs.image_registry }}
