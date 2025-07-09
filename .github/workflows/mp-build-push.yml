@@ -26,7 +26,7 @@ on:
         type: string
         default: ${{ github.sha }}
       image_scan_critical_high_exit_code:
-        description: "Error code for image scanner critical/high vulns. Set to 0 to allow soft failures"
+        description: "Error code for image scanner critical/high vulns" #--Set to 0 to allow soft failures
         type: number
         default: 1
     outputs:
