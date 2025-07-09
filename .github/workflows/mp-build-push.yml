@@ -54,7 +54,7 @@ jobs:
     #--Prereq steps https://user-guide.modernisation-platform.service.justice.gov.uk/user-guide/deploying-your-application.html#using-oidc-in-your-application-deployment-pipeline
     - name: ECR Auth
       id: auth
-      uses: ministryofjustice/laa-reusable-github-actions/.github/actions/ecr-auth/@main
+      uses: ministryofjustice/laa-reusable-github-actions/.github/actions/ecr-auth/@feat/add-mp-build-and-push
       with:
         ecr_region: ${{ vars.AWS_REGION }}
         ecr_role: arn:aws:iam::${{ secrets.DEPLOYMENT_ACCOUNT_ID }}:role/modernisation-platform-oidc-cicd
