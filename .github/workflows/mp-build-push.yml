@@ -25,10 +25,10 @@ on:
         required: false
         type: string
         default: ${{ github.sha }}
-      allow_image_scan_failures:
-        description: "Allow image scanner to proceed on failures"
-        type: boolean
-        default: false
+      image_scan_critical_high_exit_code:
+        description: "Error code for image scanner critical/high vulns. Set to 0 to allow soft failures"
+        type: number
+        default: 1
     outputs:
       image_registry:
         description: "Image Registry"
@@ -87,7 +87,7 @@ jobs:
       uses: ministryofjustice/laa-reusable-github-actions/.github/actions/image-scan@feat/add-mp-build-and-push
       with:
         image_uri: ${{ steps.output.outputs.image_uri }}
-        allow_failures: ${{ inputs.allow_image_scan_failures }}
+        critical_high_exit_code: ${{ inputs.image_scan_critical_high_exit_code }}
 
     outputs:
       image_registry: ${{ steps.output.outputs.image_registry }}

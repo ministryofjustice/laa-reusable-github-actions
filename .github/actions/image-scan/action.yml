@@ -5,9 +5,9 @@ inputs:
   image_uri:
     required: true
     description: "URI of image to scan"
-  allow_failures:
+  critical_high_exit_code:
     required: true
-    description: "Proceed on failures"
+    description: "Exit code for critical or high scanning, used to override"
 
 runs:
   using: "composite"
@@ -19,8 +19,8 @@ runs:
     with:
       image-ref: ${{ inputs.image_uri }}
       format: 'table'
-      exit-code: '1'
-      ignore-unfixed: ${{ inputs.allow_failures }}
+      exit-code: ${{ inputs.critical_high_exit_code }}
+      ignore-unfixed: true
       vuln-type: 'os,library'
       severity: 'CRITICAL,HIGH'
 
@@ -31,7 +31,7 @@ runs:
       image-ref: ${{ inputs.image_uri }}
       format: 'table'
       exit-code: '0'
-      ignore-unfixed: ${{ inputs.allow_failures }}
+      ignore-unfixed: true
       vuln-type: 'os,library'
       severity: 'UNKNOWN,LOW,MEDIUM'
     env:
