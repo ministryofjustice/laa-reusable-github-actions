@@ -20,7 +20,7 @@ runs:
       image-ref: ${{ inputs.image_uri }}
       format: 'table'
       exit-code: '1'
-      ignore-unfixed: false
+      ignore-unfixed: ${{ inputs.allow_failures }}
       vuln-type: 'os,library'
       severity: 'CRITICAL,HIGH'
 
