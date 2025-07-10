@@ -8,14 +8,17 @@ This is a beta function from Github and my be changed/break at very short notice
 
 ## Currently available workflows
 
+See dedicated READMEs where available
+
 - brakeman
 - format
 - rspec
 - rubocop
 - snyk
-- Build and Push Image (Cloud Platform)
-- Build and Push Image (Modernisation Platform)
-- Build, Push and Deploy via Helm (Cloud Platform). For use with a dedicated generic-service helm chart
+- [Build and Push Image (Cloud Platform)](docs/README-cp-build-push.md)
+- [Build and Push Image (Modernisation Platform)](docs/README-mp-build-push.md)
+- [Deploy via Helm (Cloud Platform). For use with a dedicated generic-service helm chart](docs/README-cp-deploy.md)
+- [Build, Push and Deploy via Helm (Cloud Platform). For use with a dedicated generic-service helm chart](docs/README-cp-build-push-deploy.md)
 
 ## Invoking a workflow
 
