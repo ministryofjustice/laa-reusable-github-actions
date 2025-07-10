@@ -8,6 +8,12 @@ inputs:
   ecr_role:
     required: true
     description: "IAM Role to Assume for ECR"
+  role-session-name:
+    required: true
+    description: "Unique Role Session Name"
+  account_ids:
+    required: false
+    description: "List of AWS Account IDs for ECR Auth"
 
 outputs:
   image_registry:
@@ -24,7 +30,10 @@ runs:
     with:
       role-to-assume: ${{ inputs.ecr_role }}
       aws-region: ${{ inputs.ecr_region }}
+      role-session-name: ${{ inputs.role-session-name }}
 
   - name: ECR Login
     id: login
     uses: aws-actions/amazon-ecr-login@062b18b96a7aff071d4dc91bc00c4c1a7945b076 #--2.0.1
+    with:
+      registries: ${{ inputs.account_ids }}

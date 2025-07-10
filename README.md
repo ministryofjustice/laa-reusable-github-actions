@@ -13,6 +13,9 @@ This is a beta function from Github and my be changed/break at very short notice
 - rspec
 - rubocop
 - snyk
+- Build and Push Image (Cloud Platform)
+- Build and Push Image (Modernisation Platform)
+- Build, Push and Deploy via Helm (Cloud Platform). For use with a dedicated generic-service helm chart
 
 ## Invoking a workflow
 
@@ -35,7 +38,12 @@ workflow on your remote repo by calling `ministryofjustice/laa-reusable-github-a
 
 ## Currently available actions
 
-- authenticate_to_cluster
+- authenticate_to_cluster (k8s auth)
+- ecr-auth (bundled AWS and ECR auth)
+- helm-deploy (helm upgrade, for use with a dedicated generic-service helm chart)
+- helm-kube-score (kube-score via helm templating)
+- image-scan (trivy)
+- secret-detection (trufflehog)
 
 ## Invoking an action
 

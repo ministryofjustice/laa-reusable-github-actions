@@ -1,5 +1,5 @@
 name: Helm Deploy
-description: Deploy a Helm Chart to Kubernetes
+description: Deploy a Helm Chart to Kubernetes. Intended for use with the upcoming generic-service helm chart
 
 inputs:
   k8s_namespace:
