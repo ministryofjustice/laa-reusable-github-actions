@@ -8,15 +8,15 @@ Build and push an image to the Cloud Platform
 
 The variables and secrets below are mandatory, but all are injected in to the environment automatically by the CP as part of repository configuration, they should not be created manually. See [here](https://user-guide.cloud-platform.service.justice.gov.uk/documentation/deploying-an-app/container-repositories/create.html) for details.
 
-| Secret     | Meaning                       |
-|------------|-------------------------------|
-| ECR_REGION | AWS Region                    |
+| Secret         | Meaning                   |
+| -------------- | ------------------------- |
+| ECR_REGION     | AWS Region                |
 | ECR_REPOSITORY | ECR Repository to Push to |
 
 ### Secrets
 
 | Secret             | Meaning                                               |
-|--------------------|-------------------------------------------------------|
+| ------------------ | ----------------------------------------------------- |
 | ECR_ROLE_TO_ASSUME | AWS IAM Role to assume during pipeline authentication |
 
 ## Example Usage

@@ -7,13 +7,13 @@ Build and push an image to the Modernisation Platform
 ### Variables
 
 | Secret     | Meaning    |
-|------------|------------|
+| ---------- | ---------- |
 | AWS_REGION | AWS Region |
 
 ### Secrets
 
 | Secret                | Meaning                                                    |
-|-----------------------|------------------------------------------------------------|
+| --------------------- | ---------------------------------------------------------- |
 | DEPLOYMENT_ACCOUNT_ID | AWS Account ID for the account being authenticated against |
 | ECR_ACCOUNT_ID        | AWS Account ID containing the ECR Repo being pushed to     |
 

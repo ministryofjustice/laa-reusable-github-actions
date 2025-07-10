@@ -7,13 +7,13 @@ Deploy an application to the Cloud Platform using the laa-generic-service Helm C
 ### Variables
 
 | Secret     | Meaning    |
-|------------|------------|
+| ---------- | ---------- |
 | AWS_REGION | AWS Region |
 
 ### Secrets
 
 | Secret                | Meaning                                                    |
-|-----------------------|------------------------------------------------------------|
+| --------------------- | ---------------------------------------------------------- |
 | DEPLOYMENT_ACCOUNT_ID | AWS Account ID for the account being authenticated against |
 | ECR_ACCOUNT_ID        | AWS Account ID containing the ECR Repo being pushed to     |
 
