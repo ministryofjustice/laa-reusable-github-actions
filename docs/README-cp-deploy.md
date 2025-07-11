@@ -1,6 +1,6 @@
 # cp-deploy Github Actions Workflow
 
-Deploy an application to the Cloud Platform using the laa-generic-service Helm Chart
+Deploy an application to the Cloud Platform using the laa-generic-service Helm Chart (WIP)
 
 ## Required Repo Environment Variables/Secrets:
 
@@ -40,7 +40,6 @@ jobs:
       image_tag: 0.0.1
       k8s_service_account: cd-serviceaccount #--Requires CD service account created by CP
       helm_release_name: my-release-name
-      helm_chart: ministryofjustice/laa-generic-service #--WIP
       helm_values_path: ./helm/values.yaml
     secrets: inherit
 ```
@@ -72,7 +71,6 @@ jobs:
       image_tag: ${{ needs.build_and_push.outputs.image_tag }}
       k8s_service_account: cd-serviceaccount #--Requires CD service account created by CP
       helm_release_name: my-release-name
-      helm_chart: ministryofjustice/laa-generic-service #--WIP
       helm_values_path: ./helm/values.yaml
     secrets: inherit
 ```

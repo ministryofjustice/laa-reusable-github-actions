@@ -34,6 +34,7 @@ on:
         description: "Helm chart to use for release"
         required: true
         type: string
+        default: ./laa-generic-helm-chart
       helm_values_path:
         description: "Path to values for helm deployment"
         required: true

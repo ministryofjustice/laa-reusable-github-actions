@@ -32,6 +32,7 @@ on:
         description: "Helm chart to use for release"
         required: true
         type: string
+        default: ./laa-generic-helm-chart
       helm_values_path:
         description: "Path to values for helm deployment"
         required: true
@@ -51,6 +52,12 @@ jobs:
     steps:
     - name: Git Checkout
       uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 #--v4.2.2
+
+    - name: Clone Helm Chart
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 #--v4.2.2
+      with:
+        repository: ministryofjustice/laa-generic-helm-chart
+        path: laa-generic-helm-chart
 
     - name: Kube Authentication
       id: auth
