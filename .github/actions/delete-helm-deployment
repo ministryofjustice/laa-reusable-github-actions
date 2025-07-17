@@ -1,0 +1,92 @@
+name: "Delete Helm deployment"
+description: 'Deletes a helm based kubernetes deployment with a name that matches the merged or closed branch'
+inputs:
+  k8s_cluster:
+    description: "Kubernetes cluster name"
+    required: true
+  k8s_cluster_cert:
+    description: "Kubernetes cluster certificate"
+    required: true
+  k8s_namespace:
+    description: "Kubernetes cluster namespace"
+    required: true
+  k8s_token:
+    description: "Kubernetes authentication token"
+    required: true
+  k8s_service_account:
+    description: "Kubernetes service account name"
+    required: false
+    default: "deploy-user"
+  branch_name:
+    description: "Optional branch name - inferred if not given"
+    required: false
+outputs:
+  branch-name:
+    description: "Extracted branch name"
+    value: ${{ steps.extract_branch.outputs.branch }}
+  release-name:
+    description: "Extracted release name"
+    value: ${{ steps.extract_release.outputs.release }}
+  delete-message:
+    description: "Extracted delete message"
+    value: ${{ steps.delete_release.outputs.message }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Extract branch name
+      id: extract_branch
+      shell: bash
+      env:
+        BRANCH_NAME: ${{ inputs.branch_name || 'not_given' }}
+      run: |
+        if [ $BRANCH_NAME == "not_given" ]
+        then
+          if [ $GITHUB_EVENT_NAME == "pull_request_target" ]
+          then
+            branch=$GITHUB_HEAD_REF
+          else
+            branch=${GITHUB_REF#refs/heads/}
+          fi
+        else
+          branch=$BRANCH_NAME
+        fi
+
+        echo "branch=$branch" >> $GITHUB_OUTPUT
+
+  # Truncate the branch name to 18 characters and replace special characters with hyphens because this is what we do onn CCQ/FALA/MCC
+  # however other projects may have different rules about naming releases.
+  # We also need to remove the prefix (e.g. 'feature/'), so we use sed to remove everything up to the first '/'.
+
+    - name: Extract release name
+      id: extract_release
+      shell: bash
+      run: |
+        branch=${{ steps.extract_branch.outputs.branch }}
+        truncated_branch=$(echo $branch | tr '[:upper:]' '[:lower:]' | sed 's:^\w*\/::' | tr -s ' _/[]().' '-' | cut -c1-18 | sed 's/-$//')
+        echo "release=$truncated_branch" >> $GITHUB_OUTPUT
+
+    - name: Authenticate to the cluster
+      id: authenticate_to_cluster
+      uses: ministryofjustice/laa-reusable-github-actions/.github/actions/authenticate_to_cluster@d61e0cf24795b75f719a8981a4dc21e1334a1455
+      with:
+        kube-cert: ${{ inputs.k8s_cluster_cert }}
+        kube-token: ${{ inputs.k8s_token }}
+        kube-cluster: ${{ inputs.k8s_cluster }}
+        kube-namespace: ${{ inputs.k8s_namespace }}
+        kube-sa: ${{ inputs.k8s_service_account }}
+
+    - name: Delete Helm release
+      id: delete_release
+      shell: bash
+      run: |
+        release_name=${{ steps.extract_release.outputs.release }}
+        found=$(helm list --all | grep $release_name || [[ $? == 1 ]])
+
+        if [[ ! -z "$found" ]]
+        then
+          helm delete $release_name
+          echo "message=\"Deleted Helm release ${release_name}\"" >> $GITHUB_OUTPUT
+        else
+          echo "message=\"Helm release, ${release_name}, not found\"" >> $GITHUB_OUTPUT
+        fi
