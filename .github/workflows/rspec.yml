@@ -20,7 +20,7 @@ jobs:
     - name: Set up ruby
       # this should inherit from your .ruby-version
       uses: ruby/setup-ruby@c95ae3725f6ebdd095f2bd19caed7ebc14435ba5 #--v1.243.0
-    - uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 #--4.2.3
+    - uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 #--4.2.4
       with:
         path: vendor/bundle
         key: ${{ runner.os }}-gems-${{ hashFiles('**/Gemfile.lock') }}
