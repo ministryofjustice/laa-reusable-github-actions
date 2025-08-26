@@ -29,6 +29,9 @@ on:
         description: "Error code for image scanner critical/high vulns" #--Set to 0 to allow soft failures
         type: number
         default: 1
+      build_args:
+        required: false
+        type: string
     outputs:
       image_registry:
         description: "Image Registry"
