@@ -32,6 +32,9 @@ on:
       build_args:
         required: false
         type: string
+    secrets:
+      db_cert:
+        required: false
     outputs:
       image_registry:
         description: "Image Registry"
