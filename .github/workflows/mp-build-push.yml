@@ -29,12 +29,9 @@ on:
         description: "Error code for image scanner critical/high vulns" #--Set to 0 to allow soft failures
         type: number
         default: 1
-      build_args:
-        required: false
-        type: string
-    secrets:
       db_cert:
         required: false
+        type: string
     outputs:
       image_registry:
         description: "Image Registry"
@@ -79,6 +76,7 @@ jobs:
         image_registry: ${{ steps.auth.outputs.image_registry }}
         image_repo: ${{ inputs.image_repo }}
         image_tag: ${{ inputs.image_tag }}
+        db_cert: ${{ secrets.DB_CERT }}
 
     - name: Output
       id: output
