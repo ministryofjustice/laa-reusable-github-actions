@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 #--v5.0.0
-    - uses: ministryofjustice/github-actions/code-formatter@db1a54895bf5fb975c60af47e5a3aab96505ca3e #--v18.6.0
+    - uses: ministryofjustice/github-actions/code-formatter@9c552c078797be58222f42f311cdf52c5fabd9ee #--v19.0.0
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
