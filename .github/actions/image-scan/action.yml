@@ -5,6 +5,9 @@ inputs:
   image_uri:
     required: true
     description: "URI of image to scan"
+  snyk_token:
+    required: true
+    description: "Generated Token for Snyk"
   critical_high_exit_code:
     required: true
     description: "Exit code for critical or high scanning, used to override"
@@ -13,27 +16,97 @@ runs:
   using: "composite"
 
   steps:
-  #--Fail on detection of a Critical or High vuln
-  - name: Trivy Scan (Critical and High)
-    uses: aquasecurity/trivy-action@master
-    with:
-      image-ref: ${{ inputs.image_uri }}
-      format: 'table'
-      exit-code: ${{ inputs.critical_high_exit_code }}
-      ignore-unfixed: true
-      vuln-type: 'os,library'
-      severity: 'CRITICAL,HIGH'
+  trivy-scan:
+    name: Trivy security scanning
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+      security-events: write
+    steps:
+      - name: Scan filesystem for vulnerabilities
+        uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          vuln-type: 'os'
+          format: 'sarif'
+          output: 'trivy-fs-results.sarif'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '0'
 
-  #--List all other vulns, but do not fail
-  - name: Trivy Image Scan ()
-    uses: aquasecurity/trivy-action@master
-    with:
-      image-ref: ${{ inputs.image_uri }}
-      format: 'table'
-      exit-code: '0'
-      ignore-unfixed: true
-      vuln-type: 'os,library'
-      severity: 'UNKNOWN,LOW,MEDIUM'
-    env:
-      TRIVY_SKIP_DB_UPDATE: true
-      TRIVY_SKIP_JAVA_DB_UPDATE: true
+      - name: Upload filesystem scan results to GitHub Security
+        uses: github/codeql-action/upload-sarif@7434149006143a4d75b82a2f411ef15b03ccc2d7
+        if: always()
+        with:
+          sarif_file: 'trivy-fs-results.sarif'
+          category: 'trivy-filesystem'
+
+      - name: Scan Docker image for vulnerabilities
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'image'
+          image-ref: ${{inputs.image_uri}}
+          format: 'sarif'
+          vuln-type: 'os'
+          output: 'trivy-image-results.sarif'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '0'
+
+      - name: Upload Docker image scan results to GitHub Security
+        uses: github/codeql-action/upload-sarif@7434149006143a4d75b82a2f411ef15b03ccc2d7
+        if: always()
+        with:
+          sarif_file: 'trivy-image-results.sarif'
+          category: 'trivy-image'
+
+      - name: Scan infrastructure configuration for issues
+        uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8
+        with:
+          scan-type: 'config'
+          scan-ref: '.'
+          format: 'sarif'
+          vuln-type: 'os'
+          output: 'trivy-config-results.sarif'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '0'
+
+      - name: Upload config scan results to GitHub Security
+        uses: github/codeql-action/upload-sarif@7434149006143a4d75b82a2f411ef15b03ccc2d7
+        if: always()
+        with:
+          sarif_file: 'trivy-config-results.sarif'
+          category: 'trivy-config'
+
+  snyk-scan:
+    name: Snyk security scanning
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      security-events: write
+      contents: read
+    steps:
+      - name: Pull Docker image from ECR for scanning
+        run: docker pull ${{inputs.image_uri}}
+
+      - name: Install Snyk CLI
+        uses: snyk/actions/setup@9adf32b1121593767fc3c057af55b55db032dc04
+
+      - name: Snyk Code Test
+        continue-on-error: true
+        run: snyk code test --sarif | tee snyk_sarif
+        env:
+          SNYK_TOKEN: ${{ inputs.snyk_token }}
+
+      - name: Upload results to Github Code Scanning
+        uses: github/codeql-action/upload-sarif@7434149006143a4d75b82a2f411ef15b03ccc2d7
+        with:
+          sarif_file: snyk_sarif
+
+      - name: Monitor Docker Vulnerabilities
+        uses: snyk/actions/docker@master
+        env:
+          SNYK_TOKEN: ${{ inputs.snyk_token }}
+        with:
+          image: ${{ inputs.image_uri }}
+          command: monitor
