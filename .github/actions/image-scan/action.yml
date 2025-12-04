@@ -3,11 +3,13 @@ description: Detect any known vulnerabilities in a pushed image
 
 inputs:
   image_uri:
-    required: true
+    required: false
     description: "URI of image to scan"
+    default: ""
   snyk_token:
-    required: true
+    required: false
     description: "Generated Token for Snyk"
+    default: ""
   critical_high_exit_code:
     required: true
     description: "Exit code for critical or high scanning, used to override"
@@ -16,97 +18,98 @@ runs:
   using: "composite"
 
   steps:
-  trivy-scan:
-    name: Trivy security scanning
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
-      security-events: write
-    steps:
-      - name: Scan filesystem for vulnerabilities
-        uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8
-        with:
-          scan-type: 'fs'
-          scan-ref: '.'
-          vuln-type: 'os'
-          format: 'sarif'
-          output: 'trivy-fs-results.sarif'
-          severity: 'CRITICAL,HIGH'
-          exit-code: '0'
+    - name: Always run filesystem scan (no image needed)
+      id: filesystem-scan
+      uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        vuln-type: 'os'
+        format: 'sarif'
+        output: 'trivy-fs-results.sarif'
+        severity: 'CRITICAL,HIGH'
+        exit-code: ${{ inputs.critical_high_exit_code }}
 
-      - name: Upload filesystem scan results to GitHub Security
-        uses: github/codeql-action/upload-sarif@7434149006143a4d75b82a2f411ef15b03ccc2d7
-        if: always()
-        with:
-          sarif_file: 'trivy-fs-results.sarif'
-          category: 'trivy-filesystem'
+    - name: Upload filesystem scan results to GitHub Security
+      if: always()
+      uses: github/codeql-action/upload-sarif@7434149006143a4d75b82a2f411ef15b03ccc2d7
+      with:
+        sarif_file: 'trivy-fs-results.sarif'
+        category: 'trivy-filesystem'
 
-      - name: Scan Docker image for vulnerabilities
-        uses: aquasecurity/trivy-action@master
-        with:
-          scan-type: 'image'
-          image-ref: ${{inputs.image_uri}}
-          format: 'sarif'
-          vuln-type: 'os'
-          output: 'trivy-image-results.sarif'
-          severity: 'CRITICAL,HIGH'
-          exit-code: '0'
+    - name: Always run config scan (no image needed)
+      id: config-scan
+      uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8
+      with:
+        scan-type: 'config'
+        scan-ref: '.'
+        format: 'sarif'
+        vuln-type: 'os'
+        output: 'trivy-config-results.sarif'
+        severity: 'CRITICAL,HIGH'
+        exit-code: ${{ inputs.critical_high_exit_code }}
 
-      - name: Upload Docker image scan results to GitHub Security
-        uses: github/codeql-action/upload-sarif@7434149006143a4d75b82a2f411ef15b03ccc2d7
-        if: always()
-        with:
-          sarif_file: 'trivy-image-results.sarif'
-          category: 'trivy-image'
+    - name: Upload config scan results to GitHub Security
+      if: always()
+      uses: github/codeql-action/upload-sarif@7434149006143a4d75b82a2f411ef15b03ccc2d7
+      with:
+        sarif_file: 'trivy-config-results.sarif'
+        category: 'trivy-config'
 
-      - name: Scan infrastructure configuration for issues
-        uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8
-        with:
-          scan-type: 'config'
-          scan-ref: '.'
-          format: 'sarif'
-          vuln-type: 'os'
-          output: 'trivy-config-results.sarif'
-          severity: 'CRITICAL,HIGH'
-          exit-code: '0'
+    - name: Scan Docker image with Trivy
+      if: ${{inputs.image_uri}} != ''
+      id: trivy-image-scan
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'image'
+        image-ref: ${{ inputs.image_uri }}
+        format: 'sarif'
+        vuln-type: 'os'
+        output: 'trivy-image-results.sarif'
+        severity: 'CRITICAL,HIGH'
+        exit-code: ${{ inputs.critical_high_exit_code }}
 
-      - name: Upload config scan results to GitHub Security
-        uses: github/codeql-action/upload-sarif@7434149006143a4d75b82a2f411ef15b03ccc2d7
-        if: always()
-        with:
-          sarif_file: 'trivy-config-results.sarif'
-          category: 'trivy-config'
+    - name: Upload Docker image scan results to GitHub Security
+      if: always() && ${{inputs.image_uri}} != ''
+      uses: github/codeql-action/upload-sarif@7434149006143a4d75b82a2f411ef15b03ccc2d7
+      with:
+        sarif_file: 'trivy-image-results.sarif'
+        category: 'trivy-image'
 
-  snyk-scan:
-    name: Snyk security scanning
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      security-events: write
-      contents: read
-    steps:
-      - name: Pull Docker image from ECR for scanning
-        run: docker pull ${{inputs.image_uri}}
+    - name: Run Snyk scans
+      if: ${{inputs.snyk_token}} != '' && ${{inputs.image_uri}} != ''
+      name: Snyk security scanning
+      runs-on: ubuntu-latest
+      permissions:
+        id-token: write
+        security-events: write
+        contents: read
+      steps:
+        - name: Checkout code
+          uses: actions/checkout@v4
 
-      - name: Install Snyk CLI
-        uses: snyk/actions/setup@9adf32b1121593767fc3c057af55b55db032dc04
+        - name: Pull Docker image from ECR for scanning
+          run: docker pull ${{ inputs.image_uri }}
 
-      - name: Snyk Code Test
-        continue-on-error: true
-        run: snyk code test --sarif | tee snyk_sarif
-        env:
-          SNYK_TOKEN: ${{ inputs.snyk_token }}
+        - name: Install Snyk CLI
+          uses: snyk/actions/setup@9adf32b1121593767fc3c057af55b55db032dc04
 
-      - name: Upload results to Github Code Scanning
-        uses: github/codeql-action/upload-sarif@7434149006143a4d75b82a2f411ef15b03ccc2d7
-        with:
-          sarif_file: snyk_sarif
+        - name: Snyk Code Test
+          continue-on-error: true
+          run: snyk code test --sarif | tee snyk_sarif
+          env:
+            SNYK_TOKEN: ${{ inputs.snyk_token }}
 
-      - name: Monitor Docker Vulnerabilities
-        uses: snyk/actions/docker@master
-        env:
-          SNYK_TOKEN: ${{ inputs.snyk_token }}
-        with:
-          image: ${{ inputs.image_uri }}
-          command: monitor
+        - name: Upload Snyk Code results to Github Code Scanning
+          if: always()
+          uses: github/codeql-action/upload-sarif@7434149006143a4d75b82a2f411ef15b03ccc2d7
+          with:
+            sarif_file: snyk_sarif
+
+        - name: Monitor Docker Vulnerabilities
+          uses: snyk/actions/docker@master
+          env:
+            SNYK_TOKEN: ${{ inputs.snyk_token }}
+          with:
+            image: ${{ inputs.image_uri }}
+            command: monitor
