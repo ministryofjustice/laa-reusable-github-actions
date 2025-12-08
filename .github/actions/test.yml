@@ -1,0 +1,8 @@
+name: Security scan
+
+on:
+  push:
+
+jobs:
+  security:
+    uses: ministryofjustice/laa-reusable-github-actions/.github/actions/image-scan/actions.yml@security-pipeline-actions
