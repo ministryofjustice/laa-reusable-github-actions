@@ -127,16 +127,12 @@ jobs:
       # 3. OPENGREP – SAST
       ########################################################
 
-      - name: Setup Python for Semgrep
-        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548
-        with:
-          python-version: '3.x'
-
-
-      - name: Install OpenGrep
+      - name: Install OpenGrep binary
         run: |
-          python -m pip install --upgrade pip
-          pip install opengrep
+          # Download latest OpenGrep binary for Linux x86_64
+          curl -fsSL https://github.com/opengrep/opengrep/releases/latest/download/opengrep_manylinux_x86_64 -o /usr/local/bin/opengrep
+          chmod +x /usr/local/bin/opengrep
+          opengrep --version
 
       - name: Run OpenGrep SAST
         run: |
