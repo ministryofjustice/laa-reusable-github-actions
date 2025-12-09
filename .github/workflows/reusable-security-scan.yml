@@ -103,7 +103,7 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
       - name: Upload Snyk Code SARIF
-        if: always() && secrets.SNYK_TOKEN
+        if: always() && secrets.SNYK_TOKEN != ''
         uses: github/codeql-action/upload-sarif@7434149006143a4d75b82a2f411ef15b03ccc2d7
         with:
           sarif_file: snyk-code.sarif
