@@ -129,10 +129,9 @@ jobs:
 
       - name: Install OpenGrep binary
         run: |
-          wget -q https://github.com/opengrep/opengrep/releases/download/v1.12.1/opengrep-core_linux_x86.tar.gz
-          tar -xzf opengrep-core_linux_x86.tar.gz
-          chmod +x opengrep-core_linux_x86
-          sudo mv opengrep-core_linux_x86 /usr/local/bin/opengrep
+          wget -q https://github.com/opengrep/opengrep/releases/download/v1.12.1/opengrep_manylinux_x86 -O opengrep
+          chmod +x opengrep
+          sudo mv opengrep /usr/local/bin/opengrep
           opengrep --version
 
       - name: Run OpenGrep SAST
