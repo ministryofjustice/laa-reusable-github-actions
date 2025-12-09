@@ -129,10 +129,10 @@ jobs:
 
       - name: Install OpenGrep binary
         run: |
-          # Download latest OpenGrep binary for Linux x86_64
-          curl -fsSL https://github.com/opengrep/opengrep/releases/latest/download/opengrep_manylinux_x86_64 -o /usr/local/bin/opengrep
-          chmod +x /usr/local/bin/opengrep
-          opengrep --version
+            wget -q https://github.com/opengrep/opengrep/releases/download/v1.12.1/opengrep_manylinux_x86_64 -O opengrep
+            chmod +x opengrep
+            sudo mv opengrep /usr/local/bin/opengrep
+            opengrep --version
 
       - name: Run OpenGrep SAST
         run: |
