@@ -14,7 +14,7 @@ on:
         type: string
     secrets:
       SNYK_TOKEN:
-        required: false
+        required: true
 
 jobs:
   security-scan:
@@ -93,30 +93,29 @@ jobs:
       ########################################################
 
       - name: Setup Snyk
-        if: secrets.SNYK_TOKEN != ''
-        uses: snyk/actions/setup@v4
+        uses: snyk/actions/setup@9adf32b1121593767fc3c057af55b55db032dc04
 
       - name: Snyk Code test
-        if: secrets.SNYK_TOKEN != ''
-        run: snyk code test --sarif > snyk-code.sarif || true
+        run: 
+            if [ -n "$SNYK_TOKEN" ]; then
+              snyk code test --sarif > snyk-code.sarif || true
+            fi
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
       - name: Upload Snyk Code SARIF
-        if: always() && secrets.SNYK_TOKEN != ''
+        if: success()
         uses: github/codeql-action/upload-sarif@7434149006143a4d75b82a2f411ef15b03ccc2d7
         with:
           sarif_file: snyk-code.sarif
           category: snyk-code
 
       - name: Snyk container test (optional, requires image_uri)
-        if: (inputs.image_uri != '') && secrets.SNYK_TOKEN != ''
         run: snyk container test ${{ inputs.image_uri }} --sarif-file-output=snyk-container.sarif || true
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
       - name: Upload Snyk container SARIF
-        if: always() && (inputs.image_uri != '') && secrets.SNYK_TOKEN != ''
         uses: github/codeql-action/upload-sarif@7434149006143a4d75b82a2f411ef15b03ccc2d7
         with:
           sarif_file: snyk-container.sarif
