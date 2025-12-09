@@ -111,11 +111,13 @@ jobs:
           category: snyk-code
 
       - name: Snyk container test (optional, requires image_uri)
+        if: inputs.image_uri != ''
         run: snyk container test ${{ inputs.image_uri }} --sarif-file-output=snyk-container.sarif || true
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
       - name: Upload Snyk container SARIF
+        if: always() && inputs.image_uri != ''
         uses: github/codeql-action/upload-sarif@7434149006143a4d75b82a2f411ef15b03ccc2d7
         with:
           sarif_file: snyk-container.sarif
