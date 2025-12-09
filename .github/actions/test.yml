@@ -1,8 +1,0 @@
-name: Security scan
-
-on:
-  push:
-
-jobs:
-  security:
-    uses: ministryofjustice/laa-reusable-github-actions/.github/workflows/reusable-security-scan.yml@security-pipeline-actions
