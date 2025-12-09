@@ -96,7 +96,7 @@ jobs:
         uses: snyk/actions/setup@9adf32b1121593767fc3c057af55b55db032dc04
 
       - name: Snyk Code test
-        run: 
+        run: |
             if [ -n "$SNYK_TOKEN" ]; then
               snyk code test --sarif > snyk-code.sarif || true
             fi
