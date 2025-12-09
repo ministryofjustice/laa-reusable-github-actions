@@ -5,4 +5,4 @@ on:
 
 jobs:
   security:
-    uses: ministryofjustice/laa-reusable-github-actions/.github/actions/image-scan/actions.yml@security-pipeline-actions
+    uses: ministryofjustice/laa-reusable-github-actions/.github/workflows/reusable-security-scan.yml@security-pipeline-actions
