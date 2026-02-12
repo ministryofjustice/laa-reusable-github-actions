@@ -16,6 +16,9 @@ inputs:
     required: true
     description: "Image Tag"
     default: ${{ github.sha }}
+  db_cert:
+    required: false
+    description: "Optional DB certificate for Docker build"
 
 outputs:
   image_registry:
@@ -38,7 +41,13 @@ runs:
   - name: Docker Build
     id: build_and_push
     run: |
-      docker build . -t ${{ inputs.image_registry }}/${{ inputs.image_repo }}:${{ inputs.image_tag }} -f ${{ inputs.dockerfile_path }}
+      # Prepare optional build-arg
+      BUILD_ARGS=""
+      if [ -n "${{ inputs.db_cert }}" ]; then
+        BUILD_ARGS="--build-arg DB_CERT='${{ inputs.db_cert }}'"
+      fi
+
+      docker build . -t ${{ inputs.image_registry }}/${{ inputs.image_repo }}:${{ inputs.image_tag }} -f ${{ inputs.dockerfile_path }} $BUILD_ARGS
       docker push ${{ inputs.image_registry }}/${{ inputs.image_repo }}:${{ inputs.image_tag }}
     shell: bash
 
