@@ -15,7 +15,7 @@ runs:
   steps:
   #--Fail on detection of a Critical or High vuln
   - name: Trivy Scan (Critical and High)
-    uses: aquasecurity/trivy-action@master
+    uses: aquasecurity/trivy-action@4c61e6329bab9be735ca35291551614bc663dff3
     with:
       image-ref: ${{ inputs.image_uri }}
       format: 'table'
@@ -26,7 +26,7 @@ runs:
 
   #--List all other vulns, but do not fail
   - name: Trivy Image Scan ()
-    uses: aquasecurity/trivy-action@master
+    uses: aquasecurity/trivy-action@4c61e6329bab9be735ca35291551614bc663dff3
     with:
       image-ref: ${{ inputs.image_uri }}
       format: 'table'
