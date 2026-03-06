@@ -1,0 +1,158 @@
+name: Reusable Security Scan
+
+on:
+  workflow_call:
+    inputs:
+      image_uri:
+        description: "Optional container image URI to scan (e.g. from ECR)"
+        required: false
+        type: string
+      opengrep_config:
+        description: "Opengrep ruleset (e.g. 'p/owasp-top-ten')"
+        required: false
+        default: "p/owasp-top-ten"
+        type: string
+    secrets:
+      SNYK_TOKEN:
+        required: true
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
+
+      ########################################################
+      # 1. TRIVY – FS + CONFIG + (optional) IMAGE
+      ########################################################
+
+      - name: Trivy FS scan
+        uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8
+        with:
+          scan-type: fs
+          scan-ref: .
+          vuln-type: 'os,library'
+          format: sarif
+          output: trivy-fs.sarif
+          severity: 'CRITICAL,HIGH,MEDIUM'
+          exit-code: '0'
+
+      - name: Upload Trivy FS SARIF
+        uses: github/codeql-action/upload-sarif@7434149006143a4d75b82a2f411ef15b03ccc2d7
+        if: always()
+        with:
+          sarif_file: trivy-fs.sarif
+          category: trivy-fs
+
+      - name: Trivy config scan
+        uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8
+        with:
+          scan-type: config
+          scan-ref: .
+          format: sarif
+          output: trivy-config.sarif
+          severity: 'CRITICAL,HIGH,MEDIUM'
+          exit-code: '0'
+
+      - name: Upload Trivy config SARIF
+        uses: github/codeql-action/upload-sarif@7434149006143a4d75b82a2f411ef15b03ccc2d7
+        if: always()
+        with:
+          sarif_file: trivy-config.sarif
+          category: trivy-config
+
+      - name: Trivy image scan (optional)
+        if: inputs.image_uri != ''
+        uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8
+        with:
+          scan-type: image
+          image-ref: ${{ inputs.image_uri }}
+          vuln-type: 'os,library'
+          format: sarif
+          output: trivy-image.sarif
+          severity: 'CRITICAL,HIGH,MEDIUM'
+          exit-code: '0'
+
+      - name: Upload Trivy image SARIF
+        if: always() && inputs.image_uri != ''
+        uses: github/codeql-action/upload-sarif@7434149006143a4d75b82a2f411ef15b03ccc2d7
+        with:
+          sarif_file: trivy-image.sarif
+          category: trivy-image
+
+      ########################################################
+      # 2. SNYK – CODE + (optional) CONTAINER
+      ########################################################
+
+      - name: Setup Snyk
+        uses: snyk/actions/setup@9adf32b1121593767fc3c057af55b55db032dc04
+
+      - name: Snyk Code test
+        run: |
+            if [ -n "$SNYK_TOKEN" ]; then
+              snyk code test --sarif > snyk-code.sarif || true
+            fi
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+      - name: Upload Snyk Code SARIF
+        if: success()
+        uses: github/codeql-action/upload-sarif@7434149006143a4d75b82a2f411ef15b03ccc2d7
+        with:
+          sarif_file: snyk-code.sarif
+          category: snyk-code
+
+      - name: Snyk container test (optional, requires image_uri)
+        if: inputs.image_uri != ''
+        run: snyk container test ${{ inputs.image_uri }} --sarif-file-output=snyk-container.sarif || true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+      - name: Upload Snyk container SARIF
+        if: always() && inputs.image_uri != ''
+        uses: github/codeql-action/upload-sarif@7434149006143a4d75b82a2f411ef15b03ccc2d7
+        with:
+          sarif_file: snyk-container.sarif
+          category: snyk-container
+
+      ########################################################
+      # 3. OPENGREP – SAST
+      ########################################################
+
+      - name: Cache OpenGrep binary
+        id: cache-opengrep
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: /usr/local/bin/opengrep
+          key: opengrep-v1.12.1-${{ runner.os }}
+
+      - name: Install OpenGrep binary
+        if: steps.cache-opengrep.outputs.cache-hit != 'true'
+        run: |
+          wget -q https://github.com/opengrep/opengrep/releases/download/v1.12.1/opengrep_manylinux_x86 -O opengrep
+          chmod +x opengrep
+          sudo mv opengrep /usr/local/bin/opengrep
+          opengrep --version
+
+      - name: Run OpenGrep SAST
+        run: |
+          opengrep \
+            --config "${{ inputs.opengrep_config }}" \
+            --sarif \
+            --error \
+            --output opengrep.sarif || true
+
+      - name: Upload OpenGrep SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@7434149006143a4d75b82a2f411ef15b03ccc2d7
+        with:
+          sarif_file: opengrep.sarif
+          category: opengrep
