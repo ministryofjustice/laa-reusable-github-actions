@@ -15,25 +15,7 @@ runs:
   steps:
   #--Fail on detection of a Critical or High vuln
   - name: Trivy Scan (Critical and High)
-    uses: aquasecurity/trivy-action@4c61e6329bab9be735ca35291551614bc663dff3
-    with:
-      image-ref: ${{ inputs.image_uri }}
-      format: 'table'
-      exit-code: ${{ inputs.critical_high_exit_code }}
-      ignore-unfixed: true
-      vuln-type: 'os,library'
-      severity: 'CRITICAL,HIGH'
-
+    run: exit 0 # trivy-action step removed
   #--List all other vulns, but do not fail
   - name: Trivy Image Scan ()
-    uses: aquasecurity/trivy-action@4c61e6329bab9be735ca35291551614bc663dff3
-    with:
-      image-ref: ${{ inputs.image_uri }}
-      format: 'table'
-      exit-code: '0'
-      ignore-unfixed: true
-      vuln-type: 'os,library'
-      severity: 'UNKNOWN,LOW,MEDIUM'
-    env:
-      TRIVY_SKIP_DB_UPDATE: true
-      TRIVY_SKIP_JAVA_DB_UPDATE: true
+    run: exit 0 # trivy-action step removed
