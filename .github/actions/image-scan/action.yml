@@ -34,17 +34,15 @@ jobs:
         id: snyk_auth
         shell: bash
         run: |
-          RESPONSE=$(curl -s -X POST "https://api.snyk.io/oauth2/token" \
+          TOKEN=$(curl -s -X POST "https://api.snyk.io/oauth2/token" \
             -H "Content-Type: application/x-www-form-urlencoded" \
             -d "grant_type=client_credentials" \
             -d "client_id=${{ secrets.SNYK_CLIENT_ID }}" \
-            -d "client_secret=${{ secrets.SNYK_CLIENT_SECRET }}")
-
-          TOKEN=$(echo "$RESPONSE" | jq -r '.access_token')
+            -d "client_secret=${{ secrets.SNYK_CLIENT_SECRET }}" \
+            | jq -r '.access_token')
 
           if [ -z "$TOKEN" ] || [ "$TOKEN" = "null" ]; then
             echo "::error::Failed to obtain Snyk OAuth token"
-            echo "$RESPONSE"
             exit 1
           fi
 
