@@ -63,6 +63,10 @@ jobs:
       - name: Sanitise SARIF — replace null/undefined severity scores
         shell: bash
         run: |
+          if [ ! -f snyk.sarif ]; then
+            echo "::warning::snyk.sarif not found — skipping sanitisation"
+            exit 0
+          fi
           sed -i 's/"security-severity": "null"/"security-severity": "0"/g' snyk.sarif
           sed -i 's/"security-severity": "undefined"/"security-severity": "0"/g' snyk.sarif
 
