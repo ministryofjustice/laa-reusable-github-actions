@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
-      id-tokens: write
+      id-token: write
       contents: read
       security-events: write
 
