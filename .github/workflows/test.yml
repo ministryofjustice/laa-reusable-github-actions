@@ -48,12 +48,12 @@ jobs:
 
           echo "::add-mask::$TOKEN"
 
-          echo "SNYK_TOKEN=$TOKEN" >> $GITHUB_ENV
+          echo "SNYK_OAUTH_TOKEN=$TOKEN" >> $GITHUB_ENV
 
       - name: Snyk — test image for vulnerabilities
         uses: snyk/actions/docker@9adf32b1121593767fc3c057af55b55db032dc04
         env:
-          SNYK_TOKEN: ${{ env.SNYK_TOKEN }}
+          SNYK_OAUTH_TOKEN: ${{ env.SNYK_OAUTH_TOKEN }}
         with:
           image: ${{ inputs.image_uri }}
           args: >
@@ -65,7 +65,7 @@ jobs:
         continue-on-error: true
         uses: snyk/actions/docker@9adf32b1121593767fc3c057af55b55db032dc04
         env:
-          SNYK_TOKEN: ${{ env.SNYK_TOKEN }}
+          SNYK_OAUTH_TOKEN: ${{ env.SNYK_OAUTH_TOKEN }}
         with:
           command: monitor
           image: ${{ inputs.image_uri }}
