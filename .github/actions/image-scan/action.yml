@@ -63,6 +63,17 @@ jobs:
             --sarif-file-output=snyk.sarif
             ${{ inputs.dockerfile_path != '' && format('--file={0}', inputs.dockerfile_path) || '' }}
 
+      - name: Snyk — monitor image
+        continue-on-error: true
+        uses: snyk/actions/docker@9adf32b1121593767fc3c057af55b55db032dc04
+        env:
+          SNYK_TOKEN: ${{ env.SNYK_TOKEN }}
+        with:
+          command: monitor
+          image: ${{ inputs.image_uri }}
+          args: >
+            ${{ inputs.dockerfile_path != '' && format('--file={0}', inputs.dockerfile_path) || '' }}
+
       - name: Sanitise SARIF
         if: always()
         run: |
