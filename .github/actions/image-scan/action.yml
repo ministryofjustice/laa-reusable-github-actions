@@ -8,8 +8,9 @@ on:
         required: true
         type: string
       dockerfile_path:
+        description: "Path to Dockerfile"
         required: false
-        default: ""
+        default: "Dockerfile"
         type: string
     secrets:
       SNYK_CLIENT_ID:
@@ -20,19 +21,17 @@ on:
 jobs:
   snyk:
     runs-on: ubuntu-latest
-
     permissions:
       id-token: write
       contents: read
       security-events: write
-
+      actions: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Obtain Snyk OAuth token
         id: snyk_auth
-        shell: bash
         run: |
           TOKEN=$(curl -s -X POST "https://api.snyk.io/oauth2/token" \
             -H "Content-Type: application/x-www-form-urlencoded" \
@@ -40,48 +39,35 @@ jobs:
             -d "client_id=${{ secrets.SNYK_CLIENT_ID }}" \
             -d "client_secret=${{ secrets.SNYK_CLIENT_SECRET }}" \
             | jq -r '.access_token')
-
           if [ -z "$TOKEN" ] || [ "$TOKEN" = "null" ]; then
             echo "::error::Failed to obtain Snyk OAuth token"
             exit 1
           fi
-
           echo "::add-mask::$TOKEN"
+          echo "snyk_token=$TOKEN" >> $GITHUB_OUTPUT
 
-          echo "SNYK_TOKEN=$TOKEN" >> $GITHUB_ENV
+      - name: Install Snyk CLI
+        uses: snyk/actions/setup@9adf32b1121593767fc3c057af55b55db032dc04 # master
 
-      - name: Snyk — test image for vulnerabilities
-        uses: snyk/actions/docker@9adf32b1121593767fc3c057af55b55db032dc04
-        env:
-          SNYK_TOKEN: ${{ env.SNYK_TOKEN }}
-        with:
-          image: ${{ inputs.image_uri }}
-          args: >
-            --severity-threshold=high
-            --sarif-file-output=snyk.sarif
-            ${{ inputs.dockerfile_path != '' && format('--file={0}', inputs.dockerfile_path) || '' }}
-
-      - name: Snyk — monitor image
+      - name: Snyk test
         continue-on-error: true
-        uses: snyk/actions/docker@9adf32b1121593767fc3c057af55b55db032dc04
         env:
-          SNYK_TOKEN: ${{ env.SNYK_TOKEN }}
-        with:
-          command: monitor
-          image: ${{ inputs.image_uri }}
-          args: >
-            ${{ inputs.dockerfile_path != '' && format('--file={0}', inputs.dockerfile_path) || '' }}
+          SNYK_OAUTH_TOKEN: ${{ steps.snyk_auth.outputs.snyk_token }}
+        run: snyk container test ${{ inputs.image_uri }} --severity-threshold=high --sarif-file-output=snyk.sarif --file=${{ inputs.dockerfile_path }}
+
+      - name: Snyk monitor
+        env:
+          SNYK_OAUTH_TOKEN: ${{ steps.snyk_auth.outputs.snyk_token }}
+        run: snyk container monitor ${{ inputs.image_uri }} --file=${{ inputs.dockerfile_path }}
 
       - name: Sanitise SARIF
         if: always()
         run: |
-          if [ -f snyk.sarif ]; then
-            sed -i 's/"security-severity": "null"/"security-severity": "0"/g' snyk.sarif
-            sed -i 's/"security-severity": "undefined"/"security-severity": "0"/g' snyk.sarif
-          fi
+          sed -i 's/"security-severity": "null"/"security-severity": "0"/g' snyk.sarif
+          sed -i 's/"security-severity": "undefined"/"security-severity": "0"/g' snyk.sarif
 
       - name: Upload SARIF
-        if: always()
+        if: always() && hashFiles('snyk.sarif') != ''
         uses: github/codeql-action/upload-sarif@89a39a4e59826350b863aa6b6252a07ad50cf83e
         with:
           sarif_file: snyk.sarif
