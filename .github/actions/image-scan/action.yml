@@ -30,6 +30,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
+      - name: Check Dockerfile exists
+        run: |
+          if [ ! -f "${{ inputs.dockerfile_path }}" ]; then
+            echo "::error::Dockerfile not found at ${{ inputs.dockerfile_path }}"
+            exit 1
+          fi
+
       - name: Obtain Snyk OAuth token
         id: snyk_auth
         run: |
