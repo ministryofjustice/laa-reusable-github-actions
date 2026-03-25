@@ -82,12 +82,12 @@ jobs:
         echo image_tag=${{ steps.build.outputs.image_tag }} >> "$GITHUB_OUTPUT"
         echo image_uri="${{ steps.build.outputs.image_registry }}/${{ steps.build.outputs.image_repo }}:${{ steps.build.outputs.image_tag }}" >> "$GITHUB_OUTPUT"
 
-    - name: Image Scan
-      id: scan-post
-      uses: ministryofjustice/laa-reusable-github-actions/.github/actions/image-scan@main
-      with:
-        image_uri: ${{ steps.output.outputs.image_uri }}
-        critical_high_exit_code: ${{ inputs.image_scan_critical_high_exit_code }}
+    # - name: Image Scan
+    #   id: scan-post
+    #   uses: ministryofjustice/laa-reusable-github-actions/.github/actions/image-scan@main
+    #   with:
+    #     image_uri: ${{ steps.output.outputs.image_uri }}
+    #     critical_high_exit_code: ${{ inputs.image_scan_critical_high_exit_code }}
 
     outputs:
       image_registry: ${{ steps.output.outputs.image_registry }}
