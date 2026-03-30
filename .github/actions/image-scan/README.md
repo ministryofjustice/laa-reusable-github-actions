@@ -23,5 +23,5 @@ jobs:
 ## Secrets
 
 `SNYK_CLIENT_ID` and `SNYK_CLIENT_SECRET` must be available in the
-calling repo. Set these at org level and they'll be picked up
+calling repo. Set these at in the repository secrets and they'll be picked up
 automatically via `secrets: inherit`.

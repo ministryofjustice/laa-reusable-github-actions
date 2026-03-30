@@ -12,6 +12,10 @@ on:
         required: false
         default: "Dockerfile"
         type: string
+    outputs:
+      snyk_oauth_token:
+        description: "Short-lived Snyk token"
+        values: ${{ steps.snyk_auth.outputs.snyk_token }}
     secrets:
       SNYK_CLIENT_ID:
         required: true
