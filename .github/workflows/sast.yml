@@ -1,0 +1,97 @@
+name: Perform Static Application Security Testing
+on:
+  workflow_call:
+    inputs:
+      image_uri:
+        description: "URI of image to scan"
+        required: true
+        type: string
+      dockerfile_path:
+        description: "Path to Dockerfile"
+        required: false
+        default: "Dockerfile"
+        type: string
+      iac_path:
+        description: "Path to repo's IaC. Leave unset to not run the checks"
+        required: false
+        default: ""
+        type: string
+    secrets:
+      SNYK_CLIENT_ID:
+        required: true
+      SNYK_CLIENT_SECRET:
+        required: true
+
+jobs:
+  sast:
+    name: Scan IaC & Container with Snyk
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+      security-events: write
+      actions: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Check Dockerfile exists
+        run: |
+          if [ ! -f "${{ inputs.dockerfile_path }}" ]; then
+            echo "::error::Dockerfile not found at ${{ inputs.dockerfile_path }}"
+            exit 1
+          fi
+
+      - name: Obtain Short-lived token
+        id: auth
+        uses: ministryofjustice/laa-reusable-github-actions/.github/actions/snyk-auth@feat/snyk-token-output
+        with:
+          client_id: ${{ secrets.SNYK_CLIENT_ID }}
+          client_secret: ${{ secrets.SNYK_CLIENT_SECRET }}
+
+      - name: Install Snyk CLI
+        uses: snyk/actions/setup@9adf32b1121593767fc3c057af55b55db032dc04
+
+      - name: Scan dependencies using container runtime
+        env:
+          SNYK_OAUTH_TOKEN: ${{ steps.auth.outputs.token }}
+        run: |
+          snyk container test ${{ inputs.image_uri }} \
+            --severity-threshold=critical \
+            --sarif-file-output=snyk.sarif \
+            --file=${{ inputs.dockerfile_path }} \
+            --app-vulns
+
+      - name: Monitor current
+        env:
+          SNYK_OAUTH_TOKEN: ${{ steps.auth.outputs.token }}
+        run: |
+          snyk container monitor ${{ inputs.image_uri }} \
+            --file=${{ inputs.dockerfile_path }}
+
+      - name: Snyk IaC test
+        if: hashFiles(inputs.iac_path)
+        env:
+          SNYK_OAUTH_TOKEN: ${{ steps.auth.outputs.token }}
+        run: |
+          snyk iac test ${{ inputs.iac_path }} \
+            --severity-threshold=critical \
+            --sarif-file-output=snyk-iac.sarif
+
+      - name: Sanitise SARIF
+        if: always() && hashFiles('snyk.sarif') != ''
+        run: |
+          sed -i 's/"security-severity": "null"/"security-severity": "0"/g' snyk.sarif
+          sed -i 's/"security-severity": "undefined"/"security-severity": "0"/g' snyk.sarif
+
+      - name: Upload container SARIF
+        if: always() && hashFiles('snyk.sarif') != ''
+        uses: github/codeql-action/upload-sarif@89a39a4e59826350b863aa6b6252a07ad50cf83e
+        with:
+          sarif_file: snyk.sarif
+
+      - name: Upload IaC SARIF
+        if: always() && hashFiles('snyk-iac.sarif') != ''
+        uses: github/codeql-action/upload-sarif@89a39a4e59826350b863aa6b6252a07ad50cf83e
+        with:
+          sarif_file: snyk-iac.sarif
