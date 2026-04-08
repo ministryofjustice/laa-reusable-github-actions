@@ -1,0 +1,32 @@
+name: Python linting and formatting using Ruff (PR changed files only)
+description: Run ruff linting and formatting on Python files changed in a PR
+
+runs:
+  using: composite
+  steps:
+
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      with:
+        fetch-depth: 0
+    - uses: astral-sh/ruff-action@4919ec5cf1f49eff0871dbcea0da843445b837e6
+    - name: Get changed Python files
+      id: changed
+      run: |
+        files=$(git diff --name-only \
+          ${{ github.event.pull_request.base.sha }} \
+          ${{ github.event.pull_request.head.sha }} \
+          | grep -E '\.py$' || true)
+        echo "files=$files" >> "$GITHUB_OUTPUT"
+      shell: bash
+
+    - name: Formatting
+      if: steps.changed.outputs.files != ''
+      run: |
+        ruff format --check ${{ steps.changed.outputs.files }}
+      shell: bash
+
+    - name: Linting
+      if: steps.changed.outputs.files != ''
+      run: |
+        ruff check ${{ steps.changed.outputs.files }}
+      shell: bash
