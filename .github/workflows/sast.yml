@@ -1,0 +1,101 @@
+name: Perform Static Application Security Testing
+description: A reusable workflow to perform SaST on a given repo. Please consult the Security Guardrails for Secure Pipelines for more info.
+
+on:
+  workflow_call:
+    inputs:
+      image_uri:
+        description: "URI of image to scan. The workflow intentionally doesn't perform any image building."
+        required: true
+        type: string
+      dockerfile_path:
+        description: "Path to Dockerfile that will be used by Snyk to scan"
+        required: false
+        default: "Dockerfile"
+        type: string
+      iac_path:
+        description: "Path to repo's IaC. Leave unset to not run the checks"
+        required: false
+        default: ""
+        type: string
+    # These secrets MUST be set to authenticate
+    secrets:
+      SNYK_CLIENT_ID:
+        required: true
+      SNYK_CLIENT_SECRET:
+        required: true
+
+jobs:
+  sast:
+    name: Scan IaC & Container with Snyk
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+      security-events: write
+      actions: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      # Early exit if there's no container setup to scan
+      - name: Check Dockerfile exists
+        run: |
+          if [ ! -f "${{ inputs.dockerfile_path }}" ]; then
+            echo "::error::Dockerfile not found at ${{ inputs.dockerfile_path }}, seems there isn't a container to scan"
+            exit 1
+          fi
+
+      - name: Obtain Short-lived token
+        id: auth
+        uses: ministryofjustice/laa-reusable-github-actions/.github/actions/snyk-auth@feat/snyk-token-output
+        with:
+          client_id: ${{ secrets.SNYK_CLIENT_ID }}
+          client_secret: ${{ secrets.SNYK_CLIENT_SECRET }}
+
+      - name: Install Snyk CLI
+        uses: snyk/actions/setup@9adf32b1121593767fc3c057af55b55db032dc04
+
+      - name: Scan dependencies using container runtime
+        env:
+          SNYK_OAUTH_TOKEN: ${{ steps.auth.outputs.token }}
+        run: |
+          snyk container test ${{ inputs.image_uri }} \
+            --severity-threshold=critical \
+            --sarif-file-output=snyk.sarif \
+            --file=${{ inputs.dockerfile_path }} \
+            --app-vulns
+
+      - name: Monitor current dependencies
+        env:
+          SNYK_OAUTH_TOKEN: ${{ steps.auth.outputs.token }}
+        run: |
+          snyk container monitor ${{ inputs.image_uri }} \
+            --file=${{ inputs.dockerfile_path }}
+
+      - name: Scan IaC files
+        if: hashFiles(inputs.iac_path)
+        env:
+          SNYK_OAUTH_TOKEN: ${{ steps.auth.outputs.token }}
+        run: |
+          snyk iac test ${{ inputs.iac_path }} \
+            --severity-threshold=critical \
+            --sarif-file-output=snyk-iac.sarif
+
+      - name: Sanitise SARIF
+        if: always() && hashFiles('snyk.sarif') != ''
+        run: |
+          sed -i 's/"security-severity": "null"/"security-severity": "0"/g' snyk.sarif
+          sed -i 's/"security-severity": "undefined"/"security-severity": "0"/g' snyk.sarif
+
+      - name: Upload container SARIF
+        if: always() && hashFiles('snyk.sarif') != ''
+        uses: github/codeql-action/upload-sarif@89a39a4e59826350b863aa6b6252a07ad50cf83e
+        with:
+          sarif_file: snyk.sarif
+
+      - name: Upload IaC SARIF
+        if: always() && hashFiles('snyk-iac.sarif') != ''
+        uses: github/codeql-action/upload-sarif@89a39a4e59826350b863aa6b6252a07ad50cf83e
+        with:
+          sarif_file: snyk-iac.sarif

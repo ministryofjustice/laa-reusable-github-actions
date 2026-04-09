@@ -1,0 +1,33 @@
+name: "Snyk Auth"
+description: "Obtains a short-lived Snyk OAuth token"
+
+inputs:
+  client_id:
+    required: true
+  client_secret:
+    required: true
+
+outputs:
+  token:
+    description: "Short-lived Snyk OAuth token"
+    value: ${{ steps.auth.outputs.token }}
+
+runs:
+  using: "composite"
+  steps:
+    - id: auth
+      shell: bash
+      run: |
+        TOKEN=$(curl -s -X POST "https://api.snyk.io/oauth2/token" \
+          -H "Content-Type: application/x-www-form-urlencoded" \
+          -d "grant_type=client_credentials" \
+          -d "client_id=${{ inputs.client_id }}" \
+          -d "client_secret=${{ inputs.client_secret }}" \
+          | jq -r '.access_token')
+
+        if [ -z "$TOKEN" ]; then
+          echo "::error::Failed to obtain Snyk OAuth token"
+          exit 1
+        fi
+
+        echo "token=$TOKEN" >> $GITHUB_OUTPUT
