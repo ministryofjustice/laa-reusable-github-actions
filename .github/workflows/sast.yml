@@ -1,13 +1,15 @@
 name: Perform Static Application Security Testing
+description: A reusable workflow to perform SaST on a given repo. Please consult the Security Guardrails for Secure Pipelines for more info.
+
 on:
   workflow_call:
     inputs:
       image_uri:
-        description: "URI of image to scan"
+        description: "URI of image to scan. The workflow intentionally doesn't perform any image building."
         required: true
         type: string
       dockerfile_path:
-        description: "Path to Dockerfile"
+        description: "Path to Dockerfile that will be used by Snyk to scan"
         required: false
         default: "Dockerfile"
         type: string
@@ -16,6 +18,7 @@ on:
         required: false
         default: ""
         type: string
+    # These secrets MUST be set to authenticate
     secrets:
       SNYK_CLIENT_ID:
         required: true
@@ -35,10 +38,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
 
+      # Early exit if there's no container setup to scan
       - name: Check Dockerfile exists
         run: |
           if [ ! -f "${{ inputs.dockerfile_path }}" ]; then
-            echo "::error::Dockerfile not found at ${{ inputs.dockerfile_path }}"
+            echo "::error::Dockerfile not found at ${{ inputs.dockerfile_path }}, seems there isn't a container to scan"
             exit 1
           fi
 
