@@ -2,6 +2,9 @@
 
 Scans a container image for vulnerabilities using Snyk. Runs on every call, uploads results to GitHub Code Scanning, and tracks the image in the Snyk dashboard.
 
+> [!NOTE]
+> This workflow should be considered deprecated and instead use [sast.yml](../../workflows/sast.yml)
+
 ## Usage
 
 ```yaml

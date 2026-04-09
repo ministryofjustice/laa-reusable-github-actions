@@ -62,14 +62,14 @@ jobs:
             --file=${{ inputs.dockerfile_path }} \
             --app-vulns
 
-      - name: Monitor current
+      - name: Monitor current dependencies
         env:
           SNYK_OAUTH_TOKEN: ${{ steps.auth.outputs.token }}
         run: |
           snyk container monitor ${{ inputs.image_uri }} \
             --file=${{ inputs.dockerfile_path }}
 
-      - name: Snyk IaC test
+      - name: Scan IaC files
         if: hashFiles(inputs.iac_path)
         env:
           SNYK_OAUTH_TOKEN: ${{ steps.auth.outputs.token }}
