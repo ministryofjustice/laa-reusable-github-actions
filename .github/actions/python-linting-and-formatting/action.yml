@@ -1,0 +1,53 @@
+name: Python linting and formatting using Ruff (PR changed files only)
+description: Run ruff linting and formatting on Python files changed in a PR
+
+runs:
+  using: composite
+  steps:
+
+    # Checkout the repo
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      with:
+        fetch-depth: 0
+
+    # Install Ruff without running it automatically
+    - name: Install Ruff
+      uses: astral-sh/ruff-action@4919ec5cf1f49eff0871dbcea0da843445b837e6 # v3.6.1
+      with:
+        args: "--version"  # Only installs Ruff, doesn't run it
+
+    # Get the changed Python files safely
+    - name: Get changed Python files
+      id: changed
+      shell: bash
+      run: |
+        echo "Getting changed Python files..."
+        # Use -z with git diff and grep to handle spaces, newlines, and special characters
+        git diff -z --name-only \
+          ${{ github.event.pull_request.base.sha }} \
+          ${{ github.event.pull_request.head.sha }} \
+          | grep -zE '\.py$' > changed_files.txt || true
+
+        # Store marker if files have been found
+        if [ -s changed_files.txt ]; then
+          echo "has_files=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "has_files=false" >> "$GITHUB_OUTPUT"
+        fi
+
+    # Formatting step using Ruff
+    - name: Formatting
+      if: steps.changed.outputs.has_files == 'true'
+      shell: bash
+      run: |
+        echo "Running ruff format --check..."
+        # Use xargs with -0 to safely pass filenames with spaces or special chars
+        xargs -0 ruff format --check < changed_files.txt
+
+    # Linting step using Ruff
+    - name: Linting
+      if: steps.changed.outputs.has_files == 'true'
+      shell: bash
+      run: |
+        echo "Running ruff check..."
+        xargs -0 ruff check < changed_files.txt
