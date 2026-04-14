@@ -18,12 +18,20 @@ on:
         required: false
         default: ""
         type: string
+      minimum_threshold:
+        description: "The minimum threshold to report vulnerabilities. Must be one of low|medium|high|critical"
+        required: false
+        default: "high"
+        type: string
     # These secrets MUST be set to authenticate
+    # You can alternatively also pass a static token in to authenticate
     secrets:
+      SNYK_TOKEN:
+        required: false
       SNYK_CLIENT_ID:
-        required: true
+        required: false
       SNYK_CLIENT_SECRET:
-        required: true
+        required: false
 
 jobs:
   sast:
@@ -36,7 +44,17 @@ jobs:
       actions: read
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Check if we have tokens defined
+        run: |
+          echo "has_token=${{ secrets.SNYK_TOKEN != '' }}" >> $GITHUB_ENV
+          echo "has_oauth=${{ secrets.SNYK_CLIENT_ID != '' && secrets.SNYK_CLIENT_SECRET != ''}}" >> $GITHUB_ENV
+
+          if [[ "$has_token" == 'false' && "$has_oauth" == 'false' ]]; then
+            echo "::error::Either SNYK_TOKEN or both SNYK_CLIENT_ID and SNYK_CLIENT_SECRET must be set"
+            exit 1
+          fi
 
       # Early exit if there's no container setup to scan
       - name: Check Dockerfile exists
@@ -48,7 +66,8 @@ jobs:
 
       - name: Obtain Short-lived token
         id: auth
-        uses: ministryofjustice/laa-reusable-github-actions/.github/actions/snyk-auth@feat/snyk-token-output
+        uses: ministryofjustice/laa-reusable-github-actions/.github/actions/snyk-auth@main
+        if: ${{ env.has_token == 'false' }}
         with:
           client_id: ${{ secrets.SNYK_CLIENT_ID }}
           client_secret: ${{ secrets.SNYK_CLIENT_SECRET }}
@@ -59,16 +78,18 @@ jobs:
       - name: Scan dependencies using container runtime
         env:
           SNYK_OAUTH_TOKEN: ${{ steps.auth.outputs.token }}
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+          MINIMUM_THRESHOLD: ${{ inputs.minimum_threshold }}
         run: |
           snyk container test ${{ inputs.image_uri }} \
-            --severity-threshold=critical \
+            --severity-threshold=${MINIMUM_THRESHOLD} \
             --sarif-file-output=snyk.sarif \
-            --file=${{ inputs.dockerfile_path }} \
-            --app-vulns
+            --file=${{ inputs.dockerfile_path }}
 
       - name: Monitor current dependencies
         env:
           SNYK_OAUTH_TOKEN: ${{ steps.auth.outputs.token }}
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: |
           snyk container monitor ${{ inputs.image_uri }} \
             --file=${{ inputs.dockerfile_path }}
@@ -77,25 +98,35 @@ jobs:
         if: hashFiles(inputs.iac_path)
         env:
           SNYK_OAUTH_TOKEN: ${{ steps.auth.outputs.token }}
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+          MINIMUM_THRESHOLD: ${{ inputs.minimum_threshold }}
         run: |
           snyk iac test ${{ inputs.iac_path }} \
-            --severity-threshold=critical \
+            --severity-threshold=${MINIMUM_THRESHOLD} \
             --sarif-file-output=snyk-iac.sarif
 
-      - name: Sanitise SARIF
-        if: always() && hashFiles('snyk.sarif') != ''
+      - name: Scan codebase
+        env:
+          SNYK_OAUTH_TOKEN: ${{ steps.auth.outputs.token }}
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+          MINIMUM_THRESHOLD: ${{ inputs.minimum_threshold }}
         run: |
-          sed -i 's/"security-severity": "null"/"security-severity": "0"/g' snyk.sarif
-          sed -i 's/"security-severity": "undefined"/"security-severity": "0"/g' snyk.sarif
+          snyk code test \
+            --severity-threshold=${MINIMUM_THRESHOLD} \
+            --sarif-file-output=snyk-code.sarif
 
-      - name: Upload container SARIF
-        if: always() && hashFiles('snyk.sarif') != ''
-        uses: github/codeql-action/upload-sarif@c10b8064de6f491fea524254123dbe5e09572f13
-        with:
-          sarif_file: snyk.sarif
+      - name: Sanitise SARIF files
+        if: always()
+        run: |
+          for sarif in snyk.sarif snyk-iac.sarif snyk-code.sarif; do
+            if [ -f "$sarif" ]; then
+              sed -i 's/"security-severity": "null"/"security-severity": "0"/g' "$sarif"
+              sed -i 's/"security-severity": "undefined"/"security-severity": "0"/g' "$sarif"
+            fi
+          done
 
-      - name: Upload IaC SARIF
-        if: always() && hashFiles('snyk-iac.sarif') != ''
-        uses: github/codeql-action/upload-sarif@c10b8064de6f491fea524254123dbe5e09572f13
+      - name: Upload SARIF files
+        if: always() && hashFiles('*.sarif') != ''
+        uses: github/codeql-action/upload-sarif@89a39a4e59826350b863aa6b6252a07ad50cf83e
         with:
-          sarif_file: snyk-iac.sarif
+          sarif_file: "*.sarif"
