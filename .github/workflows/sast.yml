@@ -6,7 +6,7 @@ on:
     inputs:
       image_uri:
         description: "URI of image to scan. The workflow intentionally doesn't perform any image building."
-        required: true
+        required: false
         type: string
       dockerfile_path:
         description: "Path to Dockerfile that will be used by Snyk to scan"
@@ -45,6 +45,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: false
 
       - name: Check if we have tokens defined
         run: |
@@ -58,15 +60,17 @@ jobs:
 
       # Early exit if there's no container setup to scan
       - name: Check Dockerfile exists
+        env:
+          INPUTS_DOCKERFILE_PATH: ${{ inputs.dockerfile_path }}
         run: |
-          if [ ! -f "${{ inputs.dockerfile_path }}" ]; then
-            echo "::error::Dockerfile not found at ${{ inputs.dockerfile_path }}, seems there isn't a container to scan"
+          if [ ! -f "${INPUTS_DOCKERFILE_PATH}" ]; then
+            echo "::error::Dockerfile not found at ${INPUTS_DOCKERFILE_PATH}, seems there isn't a container to scan"
             exit 1
           fi
 
       - name: Obtain Short-lived token
         id: auth
-        uses: ministryofjustice/laa-reusable-github-actions/.github/actions/snyk-auth@main
+        uses: ministryofjustice/laa-reusable-github-actions/.github/actions/snyk-auth@6db001458db30ae747d9eb8eb25707ce52b359bc
         if: ${{ env.has_token == 'false' }}
         with:
           client_id: ${{ secrets.SNYK_CLIENT_ID }}
@@ -76,23 +80,29 @@ jobs:
         uses: snyk/actions/setup@9adf32b1121593767fc3c057af55b55db032dc04
 
       - name: Scan dependencies using container runtime
+        if: ${{ env.INPUTS_IMAGE_URI != '' }}
         env:
           SNYK_OAUTH_TOKEN: ${{ steps.auth.outputs.token }}
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
           MINIMUM_THRESHOLD: ${{ inputs.minimum_threshold }}
+          INPUTS_IMAGE_URI: ${{ inputs.image_uri }}
+          INPUTS_DOCKERFILE_PATH: ${{ inputs.dockerfile_path }}
         run: |
-          snyk container test ${{ inputs.image_uri }} \
+          snyk container test ${INPUTS_IMAGE_URI} \
             --severity-threshold=${MINIMUM_THRESHOLD} \
             --sarif-file-output=snyk.sarif \
-            --file=${{ inputs.dockerfile_path }}
+            --file=${INPUTS_DOCKERFILE_PATH}
 
       - name: Monitor current dependencies
+        if: ${{ env.INPUTS_IMAGE_URI != '' }}
         env:
           SNYK_OAUTH_TOKEN: ${{ steps.auth.outputs.token }}
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+          INPUTS_IMAGE_URI: ${{ inputs.image_uri }}
+          INPUTS_DOCKERFILE_PATH: ${{ inputs.dockerfile_path }}
         run: |
-          snyk container monitor ${{ inputs.image_uri }} \
-            --file=${{ inputs.dockerfile_path }}
+          snyk container monitor ${INPUTS_IMAGE_URI} \
+            --file=${INPUTS_DOCKERFILE_PATH}
 
       - name: Scan IaC files
         if: hashFiles(inputs.iac_path)
@@ -100,8 +110,9 @@ jobs:
           SNYK_OAUTH_TOKEN: ${{ steps.auth.outputs.token }}
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
           MINIMUM_THRESHOLD: ${{ inputs.minimum_threshold }}
+          INPUTS_IAC_PATH: ${{ inputs.iac_path }}
         run: |
-          snyk iac test ${{ inputs.iac_path }} \
+          snyk iac test ${INPUTS_IAC_PATH} \
             --severity-threshold=${MINIMUM_THRESHOLD} \
             --sarif-file-output=snyk-iac.sarif
 
