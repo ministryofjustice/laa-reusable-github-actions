@@ -32,7 +32,7 @@ jobs:
 
     - name: Scan docker image using Snyk
       continue-on-error: true
-      uses: snyk/actions/docker@master
+      uses: snyk/actions/docker@9adf32b1121593767fc3c057af55b55db032dc04
       env:
         SNYK_TOKEN: ${{ secrets.snyk_token }}
       with:
@@ -40,7 +40,7 @@ jobs:
         args: --file=${{ inputs.dockerfile_path }}
 
     - name: Monitor docker image using Snyk
-      uses: snyk/actions/docker@master
+      uses: snyk/actions/docker@9adf32b1121593767fc3c057af55b55db032dc04
       env:
         SNYK_TOKEN: ${{ secrets.snyk_token }}
       with:
