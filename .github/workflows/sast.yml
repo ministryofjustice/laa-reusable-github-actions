@@ -88,9 +88,10 @@ jobs:
           INPUTS_IMAGE_URI: ${{ inputs.image_uri }}
           INPUTS_DOCKERFILE_PATH: ${{ inputs.dockerfile_path }}
         run: |
+          mkdir -p sarif
           snyk container test ${INPUTS_IMAGE_URI} \
             --severity-threshold=${MINIMUM_THRESHOLD} \
-            --sarif-file-output=snyk.sarif \
+            --sarif-file-output=sarif/snyk.sarif \
             --file=${INPUTS_DOCKERFILE_PATH}
 
       - name: Monitor current dependencies
@@ -114,7 +115,7 @@ jobs:
         run: |
           snyk iac test ${INPUTS_IAC_PATH} \
             --severity-threshold=${MINIMUM_THRESHOLD} \
-            --sarif-file-output=snyk-iac.sarif
+            --sarif-file-output=sarif/snyk-iac.sarif
 
       - name: Scan codebase
         env:
@@ -124,12 +125,12 @@ jobs:
         run: |
           snyk code test \
             --severity-threshold=${MINIMUM_THRESHOLD} \
-            --sarif-file-output=snyk-code.sarif
+            --sarif-file-output=sarif/snyk-code.sarif
 
       - name: Sanitise SARIF files
         if: always()
         run: |
-          for sarif in snyk.sarif snyk-iac.sarif snyk-code.sarif; do
+          for sarif in sarif/*.sarif; do
             if [ -f "$sarif" ]; then
               sed -i 's/"security-severity": "null"/"security-severity": "0"/g' "$sarif"
               sed -i 's/"security-severity": "undefined"/"security-severity": "0"/g' "$sarif"
@@ -137,7 +138,7 @@ jobs:
           done
 
       - name: Upload SARIF files
-        if: always() && hashFiles('*.sarif') != ''
+        if: always() && hashFiles('sarif/*.sarif') != ''
         uses: github/codeql-action/upload-sarif@89a39a4e59826350b863aa6b6252a07ad50cf83e
         with:
-          sarif_file: "*.sarif"
+          sarif_file: "sarif"
