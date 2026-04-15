@@ -26,7 +26,7 @@ runs:
   steps:
   - name: AWS Auth
     id: auth
-    uses: aws-actions/configure-aws-credentials@ececac1a45f3b08a01d2dd070d28d111c5fe6722 #--4.1.0
+    uses: aws-actions/configure-aws-credentials@ec61189d14ec14c8efccab744f656cffd0e33f37 # v6.1.0
     with:
       role-to-assume: ${{ inputs.ecr_role }}
       aws-region: ${{ inputs.ecr_region }}
@@ -34,6 +34,6 @@ runs:
 
   - name: ECR Login
     id: login
-    uses: aws-actions/amazon-ecr-login@062b18b96a7aff071d4dc91bc00c4c1a7945b076 #--2.0.1
+    uses: aws-actions/amazon-ecr-login@f2e9fc6c2b355c1890b65e6f6f0e2ac3e6e22f78 # v2.1.2
     with:
       registries: ${{ inputs.account_ids }}

@@ -12,6 +12,6 @@ runs:
 
   steps:
   - name: Trufflehog Scan
-    uses: trufflesecurity/trufflehog@690e5c7aff8347c3885096f3962a0633d9129607 #--v3.88.23
+    uses: trufflesecurity/trufflehog@47e7b7cd74f578e1e3145d48f669f22fd1330ca6 # v3.94.3
     with:
       extra_args: ${{ inputs.trufflehog_args }}

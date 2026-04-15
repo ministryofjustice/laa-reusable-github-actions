@@ -18,7 +18,7 @@ runs:
   steps:
   - name: Setup Kube Tools
     id: setup
-    uses: yokawasa/action-setup-kube-tools@9e25a4277af127b60011c95b6ed2da7e3b3613b1 #--v0.11.2
+    uses: yokawasa/action-setup-kube-tools@5778123f7b071387e9c8e522492d8f39427dc6c7 # v0.13.4
 
   - name: Kube Score
     id: kube-score
