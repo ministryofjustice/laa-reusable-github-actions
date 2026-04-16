@@ -23,6 +23,16 @@ on:
         required: false
         default: "high"
         type: string
+      ecr_region:
+        description: "The region of the ECR. If you don't know for sure, leave this as default."
+        required: false
+        default: "eu-west-2"
+        type: string
+      ecr_session_name:
+        description: "The name of the session to use in ECR. Used for auditing purposes, set to what makes sense."
+        required: false
+        default: "laa-reusable-snyk"
+        type: string
     # These secrets MUST be set to authenticate
     # You can alternatively also pass a static token in to authenticate
     secrets:
@@ -31,6 +41,8 @@ on:
       SNYK_CLIENT_ID:
         required: false
       SNYK_CLIENT_SECRET:
+        required: false
+      ECR_ROLE_TO_ASSUME:
         required: false
 
 jobs:
@@ -48,10 +60,12 @@ jobs:
         with:
           persist-credentials: false
 
+      # Secrets can't be used in if-checks so we have to define a global flag to verify
       - name: Check if we have tokens defined
         run: |
           echo "has_token=${{ secrets.SNYK_TOKEN != '' }}" >> $GITHUB_ENV
           echo "has_oauth=${{ secrets.SNYK_CLIENT_ID != '' && secrets.SNYK_CLIENT_SECRET != ''}}" >> $GITHUB_ENV
+          echo "has_ecr_role=${{ secrets.ECR_ROLE_TO_ASSUME != '' }}" >> $GITHUB_ENV
 
           if [[ "$has_token" == 'false' && "$has_oauth" == 'false' ]]; then
             echo "::error::Either SNYK_TOKEN or both SNYK_CLIENT_ID and SNYK_CLIENT_SECRET must be set"
@@ -67,6 +81,14 @@ jobs:
             echo "::error::Dockerfile not found at ${INPUTS_DOCKERFILE_PATH}, seems there isn't a container to scan"
             exit 1
           fi
+
+      - name: Configure AWS credentials for ECR access
+        if: ${{ env.has_ecr_role == 'true' }}
+        uses: ministryofjustice/laa-reusable-github-actions/.github/actions/ecr-auth@e5500aa20b13a1406fe8a62b8788181a2ca18926
+        with:
+          ecr_role: ${{ secrets.ECR_ROLE_TO_ASSUME }}
+          ecr_region: ${{ inputs.ecr_region }}
+          role-session-name: ${{ inputs.ecr_session_name }}
 
       - name: Obtain Short-lived token
         id: auth
