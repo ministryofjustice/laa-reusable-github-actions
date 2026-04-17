@@ -1,5 +1,5 @@
 name: Perform Static Application Security Testing
-description: A reusable workflow to perform SaST on a given repo. Please consult the Security Guardrails for Secure Pipelines for more info.
+description: A reusable workflow to perform SaST on a given repo. See docs/README-sast.md for more info.
 
 on:
   workflow_call:
@@ -14,7 +14,7 @@ on:
         default: "Dockerfile"
         type: string
       iac_path:
-        description: "Path to repo's IaC. Leave unset to not run the checks"
+        description: "Path to repo's helm deployment files. Leave unset to not run the checks"
         required: false
         default: ""
         type: string
@@ -22,11 +22,6 @@ on:
         description: "The minimum threshold to report vulnerabilities. Must be one of low|medium|high|critical"
         required: false
         default: "high"
-        type: string
-      ecr_region:
-        description: "The region of the ECR. If you don't know for sure, leave this as default."
-        required: false
-        default: "eu-west-2"
         type: string
       ecr_session_name:
         description: "The name of the session to use in ECR. Used for auditing purposes, set to what makes sense."
@@ -87,7 +82,7 @@ jobs:
         uses: ministryofjustice/laa-reusable-github-actions/.github/actions/ecr-auth@e5500aa20b13a1406fe8a62b8788181a2ca18926
         with:
           ecr_role: ${{ secrets.ECR_ROLE_TO_ASSUME }}
-          ecr_region: ${{ inputs.ecr_region }}
+          ecr_region: "eu-west-2"
           role-session-name: ${{ inputs.ecr_session_name }}
 
       - name: Obtain Short-lived token
@@ -127,7 +122,7 @@ jobs:
           snyk container monitor ${INPUTS_IMAGE_URI} \
             --file=${INPUTS_DOCKERFILE_PATH}
 
-      - name: Scan IaC files
+      - name: Scan Infrastructure as Code files
         if: hashFiles(inputs.iac_path)
         env:
           SNYK_OAUTH_TOKEN: ${{ steps.auth.outputs.token }}
