@@ -23,7 +23,7 @@ Below is a table of each of the permissions required and why they're required:
 jobs:
   image_scan:
     name: Run SaST tooling
-    uses: ministryofjustice/laa-reusable-github-actions/.github/workflows/sast.yml@main
+    uses: ministryofjustice/laa-reusable-github-actions/.github/workflows/sast.yml@<insert latest sha here>
     permissions:
       actions: read
       id-token: write
@@ -169,7 +169,7 @@ jobs:
 
   sast:
     needs: build
-    uses: ministryofjustice/laa-reusable-github-actions/.github/workflows/sast.yml@main
+    uses: ministryofjustice/laa-reusable-github-actions/.github/workflows/sast.yml@<insert latest sha here>
     with:
       image_uri: ${{ needs.build.outputs.image_uri }}
     secrets:
@@ -182,7 +182,7 @@ jobs:
 
 ```yaml
   sast:
-    uses: ministryofjustice/laa-reusable-github-actions/.github/workflows/sast.yml@main
+    uses: ministryofjustice/laa-reusable-github-actions/.github/workflows/sast.yml@<insert latest sha here>
     with:
       image_uri: ${{ needs.build.outputs.image_uri }}
       iac_path: helm/deployment
