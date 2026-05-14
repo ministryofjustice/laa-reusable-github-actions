@@ -21,10 +21,6 @@ on:
         required: false
         type: string
         default: ${{ github.sha }}
-      image_scan_critical_high_exit_code:
-        description: "Error code for image scanner critical/high vulns" #--Set to 0 to allow soft failures
-        type: number
-        default: 1
     outputs:
       image_registry:
         description: "Image Registry"
@@ -38,6 +34,13 @@ on:
       image_uri:
         description: "Image Registry"
         value: ${{ jobs.build_push.outputs.image_uri }}
+    secrets:
+      SNYK_CLIENT_ID:
+        required: true
+      SNYK_CLIENT_SECRET:
+        required: true
+      ECR_ROLE_TO_ASSUME:
+        required: true
 
 jobs:
   build_push:
@@ -76,15 +79,20 @@ jobs:
         echo image_tag=${{ steps.build.outputs.image_tag }} >> "$GITHUB_OUTPUT"
         echo image_uri="${{ steps.build.outputs.image_registry }}/${{ steps.build.outputs.image_repo }}:${{ steps.build.outputs.image_tag }}" >> "$GITHUB_OUTPUT"
 
-    - name: Image Scan
-      id: scan-post
-      uses: ministryofjustice/laa-reusable-github-actions/.github/actions/image-scan@main
-      with:
-        image_uri: ${{ steps.output.outputs.image_uri }}
-        critical_high_exit_code: ${{ inputs.image_scan_critical_high_exit_code }}
-
     outputs:
       image_registry: ${{ steps.output.outputs.image_registry }}
       image_repo: ${{ steps.output.outputs.image_repo }}
       image_tag: ${{ steps.output.outputs.image_tag }}
       image_uri: ${{ steps.output.outputs.image_uri }}
+
+  scan:
+    needs: build_push
+    uses: ministryofjustice/laa-reusable-github-actions/.github/workflows/sast.yml@main
+    with:
+      image_uri: ${{ needs.build_push.outputs.image_uri }}
+      dockerfile_path: ${{ inputs.dockerfile_path }}
+      ecr_session_name: "github-cicd-${{ inputs.app_name }}-scan-${{ github.run_number }}"
+    secrets:
+      SNYK_CLIENT_ID: ${{ secrets.SNYK_CLIENT_ID }}
+      SNYK_CLIENT_SECRET: ${{ secrets.SNYK_CLIENT_SECRET }}
+      ECR_ROLE_TO_ASSUME: ${{ secrets.ECR_ROLE_TO_ASSUME }}
