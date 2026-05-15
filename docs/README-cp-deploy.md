@@ -4,18 +4,14 @@ Deploy an application to the Cloud Platform using the laa-generic-service Helm C
 
 ## Required Repo Environment Variables/Secrets:
 
-### Variables
-
-| Secret     | Meaning    |
-| ---------- | ---------- |
-| AWS_REGION | AWS Region |
-
 ### Secrets
 
-| Secret                | Meaning                                                    |
-| --------------------- | ---------------------------------------------------------- |
-| DEPLOYMENT_ACCOUNT_ID | AWS Account ID for the account being authenticated against |
-| ECR_ACCOUNT_ID        | AWS Account ID containing the ECR Repo being pushed to     |
+| Secret         | Meaning                                  |
+| -------------- | ---------------------------------------- |
+| KUBE_CLUSTER   | Kubernetes cluster endpoint              |
+| KUBE_NAMESPACE | Kubernetes namespace to deploy to        |
+| KUBE_TOKEN     | Kubernetes service account token         |
+| KUBE_CERT      | Kubernetes cluster certificate authority |
 
 ## Example Usage
 
@@ -40,6 +36,7 @@ jobs:
       image_tag: 0.0.1
       k8s_service_account: cd-serviceaccount #--Requires CD service account created by CP
       helm_release_name: my-release-name
+      helm_chart: ./laa-generic-helm-chart
       helm_values_path: ./helm/values.yaml
     secrets: inherit
 ```
@@ -56,7 +53,7 @@ on:
 
 jobs:
   build_and_push:
-    uses: ministryofjustice/laa-reusable-github-actions/.github/workflows/mp-build-push.yml@main
+    uses: ministryofjustice/laa-reusable-github-actions/.github/workflows/cp-build-push.yml@main
     secrets: inherit
     with:
       app_name: my-app
@@ -71,6 +68,7 @@ jobs:
       image_tag: ${{ needs.build_and_push.outputs.image_tag }}
       k8s_service_account: cd-serviceaccount #--Requires CD service account created by CP
       helm_release_name: my-release-name
+      helm_chart: ./laa-generic-helm-chart
       helm_values_path: ./helm/values.yaml
     secrets: inherit
 ```
