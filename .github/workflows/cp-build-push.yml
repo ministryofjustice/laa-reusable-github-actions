@@ -21,6 +21,10 @@ on:
         required: false
         type: string
         default: ${{ github.sha }}
+      docker_additional_args:
+        description: "Any additional Docker build arguments"
+        required: false
+        type: string
     outputs:
       image_registry:
         description: "Image Registry"
@@ -64,12 +68,13 @@ jobs:
 
     - name: Build and Push
       id: build
-      uses: ministryofjustice/laa-reusable-github-actions/.github/actions/build-and-push@main
+      uses: ./.github/actions/build-and-push
       with:
         dockerfile_path: ${{ inputs.dockerfile_path }}
         image_registry: ${{ steps.auth.outputs.image_registry }}
         image_repo: ${{ vars.ECR_REPOSITORY }}
         image_tag: ${{ inputs.image_tag }}
+        docker_additional_args: ${{ inputs.docker_additional_args }}
 
     - name: Output
       id: output

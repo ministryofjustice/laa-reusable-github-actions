@@ -16,6 +16,9 @@ inputs:
     required: true
     description: "Image Tag"
     default: ${{ github.sha }}
+  docker_additional_args:
+    required: false
+    description: "Any additional Docker build input params"
 
 outputs:
   image_registry:
@@ -38,7 +41,7 @@ runs:
   - name: Docker Build
     id: build_and_push
     run: |
-      docker build . -t ${{ inputs.image_registry }}/${{ inputs.image_repo }}:${{ inputs.image_tag }} -f ${{ inputs.dockerfile_path }}
+      docker build . -t ${{ inputs.image_registry }}/${{ inputs.image_repo }}:${{ inputs.image_tag }} -f ${{ inputs.dockerfile_path }} ${{ inputs.docker_additional_args }}
       docker push ${{ inputs.image_registry }}/${{ inputs.image_repo }}:${{ inputs.image_tag }}
     shell: bash
 

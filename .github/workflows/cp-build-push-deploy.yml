@@ -21,6 +21,10 @@ on:
         required: false
         type: string
         default: ${{ github.sha }}
+      docker_additional_args:
+        description: "Any additional Docker build arguments"
+        required: false
+        type: string
       k8s_service_account:
         description: "Service Account for Kubernetes Authentication"
         required: false
@@ -46,12 +50,13 @@ on:
 
 jobs:
   build_and_push:
-    uses: ministryofjustice/laa-reusable-github-actions/.github/workflows/cp-build-push.yml@main
+    uses: ./.github/workflows/cp-build-push.yml
     with:
       environment: ${{ inputs.environment }}
       dockerfile_path: ${{ inputs.dockerfile_path }}
       app_name: ${{ inputs.app_name }}
       image_tag: ${{ inputs.image_tag }}
+      docker_additional_args: ${{ inputs.docker_additional_args }}
     secrets: inherit
 
   helm_deploy:

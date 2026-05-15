@@ -40,6 +40,7 @@ jobs:
       environment: dev #--Requires multiple Github Environments set up in CP
       app_name: my-app
       image_tag: ${{ github.event.release.tag_name }}
+      docker_additional_args: --secret id=github_token,env=GITHUB_TOKEN
       helm_release_name: my-release-name
       helm_chart: ./laa-generic-helm-chart
       helm_values_path: ./helm/values.yaml
