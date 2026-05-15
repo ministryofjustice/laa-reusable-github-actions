@@ -68,7 +68,7 @@ jobs:
 
     - name: Build and Push
       id: build
-      uses: ./.github/actions/build-and-push
+      uses: ministryofjustice/laa-reusable-github-actions/.github/actions/build-and-push@main
       with:
         dockerfile_path: ${{ inputs.dockerfile_path }}
         image_registry: ${{ steps.auth.outputs.image_registry }}

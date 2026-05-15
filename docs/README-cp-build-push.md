@@ -59,5 +59,5 @@ jobs:
     secrets: inherit
     with:
       app_name: my-app
-      docker_additional_args: --secret id=github_actor,env=GITHUB_ACTOR --secret id=github_token,env=GITHUB_TOKEN
+      docker_additional_args: --secret id=github_token,env=GITHUB_TOKEN
 ```

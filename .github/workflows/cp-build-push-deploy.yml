@@ -50,7 +50,7 @@ on:
 
 jobs:
   build_and_push:
-    uses: ./.github/workflows/cp-build-push.yml
+    uses: ministryofjustice/laa-reusable-github-actions/.github/workflows/cp-build-push.yml@main
     with:
       environment: ${{ inputs.environment }}
       dockerfile_path: ${{ inputs.dockerfile_path }}

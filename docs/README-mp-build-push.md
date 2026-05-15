@@ -55,5 +55,4 @@ jobs:
     with:
       app_name: my-app
       image_repo: my-image-repo #--Repo name only, not full arn or registry/repo format
-      docker_additional_args: --secret id=github_actor,env=GITHUB_ACTOR --secret id=github_token,env=GITHUB_TOKEN
 ```
