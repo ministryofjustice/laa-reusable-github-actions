@@ -21,6 +21,11 @@ on:
         required: false
         type: string
         default: ${{ github.sha }}
+      dockerfile_requires_git:
+        description: "Set to 'true' if the Dockerfile needs git access"
+        required: false
+        type: boolean
+        default: false
       k8s_service_account:
         description: "Service Account for Kubernetes Authentication"
         required: false
@@ -52,6 +57,7 @@ jobs:
       dockerfile_path: ${{ inputs.dockerfile_path }}
       app_name: ${{ inputs.app_name }}
       image_tag: ${{ inputs.image_tag }}
+      dockerfile_requires_git: ${{ inputs.dockerfile_requires_git }}
     secrets: inherit
 
   helm_deploy:

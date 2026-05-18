@@ -16,6 +16,10 @@ inputs:
     required: true
     description: "Image Tag"
     default: ${{ github.sha }}
+  dockerfile_requires_git:
+    required: false
+    description: "Set to 'true' if the Dockerfile needs git access"
+    default: "false"
 
 outputs:
   image_registry:
@@ -38,9 +42,15 @@ runs:
   - name: Docker Build
     id: build_and_push
     run: |
-      docker build . -t ${{ inputs.image_registry }}/${{ inputs.image_repo }}:${{ inputs.image_tag }} -f ${{ inputs.dockerfile_path }}
-      docker push ${{ inputs.image_registry }}/${{ inputs.image_repo }}:${{ inputs.image_tag }}
+      docker build . \
+        -t "${{ inputs.image_registry }}/${{ inputs.image_repo }}:${{ inputs.image_tag }}" \
+        -f "${{ inputs.dockerfile_path }}" \
+        ${{ inputs.dockerfile_requires_git == 'true' && '--secret id=git_token,env=GIT_TOKEN' || '' }}
+
+      docker push "${{ inputs.image_registry }}/${{ inputs.image_repo }}:${{ inputs.image_tag }}"
     shell: bash
+    env:
+      GIT_TOKEN: ${{ github.token }}
 
   - name: Output
     id: output
