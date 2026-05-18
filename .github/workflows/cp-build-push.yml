@@ -21,10 +21,11 @@ on:
         required: false
         type: string
         default: ${{ github.sha }}
-      docker_additional_args:
-        description: "Any additional Docker build arguments"
+      dockerfile_requires_git:
+        description: "Set to true if the Dockerfile needs git access"
         required: false
-        type: string
+        type: boolean
+        default: false
     outputs:
       image_registry:
         description: "Image Registry"
@@ -74,7 +75,7 @@ jobs:
         image_registry: ${{ steps.auth.outputs.image_registry }}
         image_repo: ${{ vars.ECR_REPOSITORY }}
         image_tag: ${{ inputs.image_tag }}
-        docker_additional_args: ${{ inputs.docker_additional_args }}
+        dockerfile_requires_git: ${{ inputs.dockerfile_requires_git }}
 
     - name: Output
       id: output
