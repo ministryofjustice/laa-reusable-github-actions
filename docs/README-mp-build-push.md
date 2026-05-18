@@ -35,7 +35,6 @@ jobs:
       app_name: my-app
       image_repo: my-image-repo #--Repo name only, not full arn or registry/repo format
       image_tag: ${{ github.event.release.tag_name }}
-      docker_additional_args: --secret id=github_token,env=GITHUB_TOKEN
 ```
 
 ### Create a new image on PR, tagged with the latest commit hash
