@@ -54,7 +54,7 @@ jobs:
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd #--v6.0.2
 
     - name: Obtain Octo STS Token
-      uses: octo-sts/action@a26b0c6455c7f13316f29a8766287f939e75f6c8 # v1.0.2
+      uses: octo-sts/action@f603d3be9d8dd9871a265776e625a27b00effe05 # v1.1.1
       id: octo_sts
       with:
         scope: ministryofjustice/laa-generic-helm-chart
