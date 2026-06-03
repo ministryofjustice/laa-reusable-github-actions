@@ -51,7 +51,7 @@ on:
 
 jobs:
   build_and_push:
-    uses: ministryofjustice/laa-reusable-github-actions/.github/workflows/cp-build-push.yml@main
+    uses: ministryofjustice/laa-reusable-github-actions/.github/workflows/cp-build-push.yml@0cb7eb8ab4bf643986ab36ecf3ffcdffa9b55214 # SHA for main as of 3 JUN 2026
     with:
       environment: ${{ inputs.environment }}
       dockerfile_path: ${{ inputs.dockerfile_path }}
@@ -62,7 +62,7 @@ jobs:
 
   helm_deploy:
     needs: build_and_push
-    uses: ministryofjustice/laa-reusable-github-actions/.github/workflows/cp-deploy.yml@main
+    uses: ministryofjustice/laa-reusable-github-actions/.github/workflows/cp-deploy.yml@0cb7eb8ab4bf643986ab36ecf3ffcdffa9b55214 # SHA for main as of 3 JUN 2026
     with:
       environment: ${{ inputs.environment }}
       image_repo: ${{ needs.build_and_push.outputs.image_repo }}

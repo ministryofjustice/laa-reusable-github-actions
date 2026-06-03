@@ -10,7 +10,7 @@ Scans a container image for vulnerabilities using Snyk. Runs on every call, uplo
 ```yaml
 jobs:
   scan:
-    uses: ministryofjustice/laa-reusable-github-actions/.github/workflows/scan-image.yml@main
+    uses: ministryofjustice/laa-reusable-github-actions/.github/workflows/scan-image.yml@0cb7eb8ab4bf643986ab36ecf3ffcdffa9b55214 # SHA for main as of 3 JUN 2026
     with:
       image_uri: ${{ env.ECR_IMAGE }}
     secrets: inherit

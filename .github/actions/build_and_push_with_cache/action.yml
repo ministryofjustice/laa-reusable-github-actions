@@ -14,7 +14,7 @@
 #       ${{ runner.os }}-buildx-
 #
 # - name: Build and push image with caching
-#   uses: ministryofjustice/laa-reusable-github-actions/.github/actions/build_and_push_with_cache@main
+#   uses: ministryofjustice/laa-reusable-github-actions/.github/actions/build_and_push_with_cache@0cb7eb8ab4bf643986ab36ecf3ffcdffa9b55214 # SHA for main as of 3 JUN 2026
 #   with:
 #     image_registry: ${{ secrets.ECR_REGISTRY_URL }}
 #     image_repo: ${{ vars.ECR_REPOSITORY }}

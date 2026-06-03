@@ -15,4 +15,4 @@ jobs:
           fetch-depth: 0
 
       - name: Secret Detection
-        uses: ministryofjustice/laa-reusable-github-actions/.github/actions/secret-detection@main
+        uses: ministryofjustice/laa-reusable-github-actions/.github/actions/secret-detection@0cb7eb8ab4bf643986ab36ecf3ffcdffa9b55214 # SHA for main as of 3 JUN 2026

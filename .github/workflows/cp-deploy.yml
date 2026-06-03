@@ -69,7 +69,7 @@ jobs:
 
     - name: Kube Authentication
       id: auth
-      uses: ministryofjustice/laa-reusable-github-actions/.github/actions/authenticate_to_cluster@main
+      uses: ministryofjustice/laa-reusable-github-actions/.github/actions/authenticate_to_cluster@0cb7eb8ab4bf643986ab36ecf3ffcdffa9b55214 # SHA for main as of 3 JUN 2026
       with:
         kube-cluster: ${{ secrets.KUBE_CLUSTER }}
         kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
@@ -79,7 +79,7 @@ jobs:
 
     - name: Helm Deploy
       id: deploy
-      uses: ministryofjustice/laa-reusable-github-actions/.github/actions/helm-deploy@main
+      uses: ministryofjustice/laa-reusable-github-actions/.github/actions/helm-deploy@0cb7eb8ab4bf643986ab36ecf3ffcdffa9b55214 # SHA for main as of 3 JUN 2026
       with:
         k8s_namespace: ${{ secrets.KUBE_NAMESPACE }}
         helm_release_name: ${{ inputs.helm_release_name }}
