@@ -58,7 +58,7 @@ jobs:
     #--Prereq steps https://user-guide.modernisation-platform.service.justice.gov.uk/user-guide/deploying-your-application.html#using-oidc-in-your-application-deployment-pipeline
     - name: ECR Auth
       id: auth
-      uses: ministryofjustice/laa-reusable-github-actions/.github/actions/ecr-auth/@main
+      uses: ministryofjustice/laa-reusable-github-actions/.github/actions/ecr-auth/@0cb7eb8ab4bf643986ab36ecf3ffcdffa9b55214 # SHA for main as of 3 JUN 2026
       with:
         ecr_region: ${{ vars.AWS_REGION }}
         ecr_role: arn:aws:iam::${{ secrets.DEPLOYMENT_ACCOUNT_ID }}:role/modernisation-platform-oidc-cicd
@@ -67,7 +67,7 @@ jobs:
 
     - name: Build and Push
       id: build
-      uses: ministryofjustice/laa-reusable-github-actions/.github/actions/build-and-push@main
+      uses: ministryofjustice/laa-reusable-github-actions/.github/actions/build-and-push@0cb7eb8ab4bf643986ab36ecf3ffcdffa9b55214 # SHA for main as of 3 JUN 2026
       with:
         dockerfile_path: ${{ inputs.dockerfile_path }}
         image_registry: ${{ steps.auth.outputs.image_registry }}
@@ -84,7 +84,7 @@ jobs:
 
     - name: Image Scan
       id: scan-post
-      uses: ministryofjustice/laa-reusable-github-actions/.github/actions/image-scan@main
+      uses: ministryofjustice/laa-reusable-github-actions/.github/actions/image-scan@0cb7eb8ab4bf643986ab36ecf3ffcdffa9b55214 # SHA for main as of 3 JUN 2026
       with:
         image_uri: ${{ steps.output.outputs.image_uri }}
         critical_high_exit_code: ${{ inputs.image_scan_critical_high_exit_code }}
