@@ -20,6 +20,10 @@ inputs:
     required: false
     description: "Set to 'true' if the Dockerfile needs git access"
     default: "false"
+  additional_image_tags:
+    required: false
+    description: "JSON array of additional tags to apply to the image, e.g. '[\"latest\",\"stable\"]'"
+    default: "[]"
 
 outputs:
   image_registry:
@@ -48,6 +52,14 @@ runs:
         ${{ inputs.dockerfile_requires_git == 'true' && '--secret id=git_token,env=GIT_TOKEN' || '' }}
 
       docker push "${{ inputs.image_registry }}/${{ inputs.image_repo }}:${{ inputs.image_tag }}"
+
+      ADDITIONAL_TAGS='${{ inputs.additional_image_tags }}'
+      echo "$ADDITIONAL_TAGS" | jq -r '.[]' | while read -r tag; do
+        docker tag \
+          "${{ inputs.image_registry }}/${{ inputs.image_repo }}:${{ inputs.image_tag }}" \
+          "${{ inputs.image_registry }}/${{ inputs.image_repo }}:${tag}"
+        docker push "${{ inputs.image_registry }}/${{ inputs.image_repo }}:${tag}"
+      done
     shell: bash
     env:
       GIT_TOKEN: ${{ github.token }}
