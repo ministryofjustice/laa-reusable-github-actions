@@ -61,7 +61,7 @@ jobs:
 
     - name: ECR Auth
       id: auth
-      uses: ministryofjustice/laa-reusable-github-actions/.github/actions/ecr-auth@0e69f22cd314ebc6a1bbb0dc16e515a90551e61f # SHA for branch
+      uses: ministryofjustice/laa-reusable-github-actions/.github/actions/ecr-auth@583a60502327d7b9b7701fdb11be9f7d096cf9f5 # SHA for main as of 12/06/2026
       with:
         ecr_region: ${{ vars.ECR_REGION }}
         ecr_role: ${{ secrets.ECR_ROLE_TO_ASSUME }}
