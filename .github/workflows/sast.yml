@@ -79,7 +79,7 @@ jobs:
 
       - name: Configure AWS credentials for ECR access
         if: ${{ env.has_ecr_role == 'true' }}
-        uses: ministryofjustice/laa-reusable-github-actions/.github/actions/ecr-auth@e5500aa20b13a1406fe8a62b8788181a2ca18926
+        uses: ministryofjustice/laa-reusable-github-actions/.github/actions/ecr-auth@0e69f22cd314ebc6a1bbb0dc16e515a90551e61f # SHA for branch
         with:
           ecr_role: ${{ secrets.ECR_ROLE_TO_ASSUME }}
           ecr_region: "eu-west-2"
