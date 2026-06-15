@@ -54,12 +54,14 @@ runs:
       docker push "${{ inputs.image_registry }}/${{ inputs.image_repo }}:${{ inputs.image_tag }}"
 
       ADDITIONAL_TAGS='${{ inputs.additional_image_tags }}'
-      echo "$ADDITIONAL_TAGS" | jq -r '.[]' | while read -r tag; do
-        docker tag \
-          "${{ inputs.image_registry }}/${{ inputs.image_repo }}:${{ inputs.image_tag }}" \
-          "${{ inputs.image_registry }}/${{ inputs.image_repo }}:${tag}"
-        docker push "${{ inputs.image_registry }}/${{ inputs.image_repo }}:${tag}"
-      done
+      if [ -n "$ADDITIONAL_TAGS" ] && [ "$ADDITIONAL_TAGS" != "[]" ]; then
+        echo "$ADDITIONAL_TAGS" | jq -r '.[]' | while read -r tag; do
+          docker tag \
+            "${{ inputs.image_registry }}/${{ inputs.image_repo }}:${{ inputs.image_tag }}" \
+            "${{ inputs.image_registry }}/${{ inputs.image_repo }}:${tag}"
+          docker push "${{ inputs.image_registry }}/${{ inputs.image_repo }}:${tag}"
+        done
+      fi
     shell: bash
     env:
       GIT_TOKEN: ${{ github.token }}
