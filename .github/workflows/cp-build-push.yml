@@ -21,6 +21,11 @@ on:
         required: false
         type: string
         default: ${{ github.sha }}
+      additional_image_tags:
+        description: "JSON array of additional tags to apply to the image, e.g. '[\"latest\",\"stable\"]'"
+        required: false
+        type: string
+        default: "[]"
       dockerfile_requires_git:
         description: "Set to true if the Dockerfile needs git access"
         required: false
@@ -69,12 +74,13 @@ jobs:
 
     - name: Build and Push
       id: build
-      uses: ministryofjustice/laa-reusable-github-actions/.github/actions/build-and-push@0cb7eb8ab4bf643986ab36ecf3ffcdffa9b55214 # SHA for main as of 3 JUN 2026
+      uses: ministryofjustice/laa-reusable-github-actions/.github/actions/build-and-push@de080adc3a989fe66cf999d57d32e7bb8d85624f # SHA for branch - TODO update to main once merged
       with:
         dockerfile_path: ${{ inputs.dockerfile_path }}
         image_registry: ${{ steps.auth.outputs.image_registry }}
         image_repo: ${{ vars.ECR_REPOSITORY }}
         image_tag: ${{ inputs.image_tag }}
+        additional_image_tags: ${{ inputs.additional_image_tags }}
         dockerfile_requires_git: ${{ inputs.dockerfile_requires_git }}
 
     - name: Output
