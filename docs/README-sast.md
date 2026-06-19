@@ -51,6 +51,7 @@ change anything you don't need to.
 | `dockerfile_path` | No | `Dockerfile` | Path to the Dockerfile used by Snyk for context during container scanning. Relative to the top-level of the repository so unless you have a monorepo this is probably fine to leave |
 | `iac_path` | No | `""` | Path to Helm/IaC files. Leave unset to skip Infrastructure as Code scanning. |
 | `minimum_threshold` | No | `high` | Minimum severity level to report. One of: `low`, `medium`, `high`, `critical`. |
+| `exclude_base_image_vulns` | No | `false` | When `true`, appends `--exclude-base-image-vulns` to `snyk container test`. Useful when you want to focus on app-layer vulnerabilities and ignore base image findings. |
 | `ecr_session_name` | No | `laa-reusable-snyk` | Session name used when assuming the ECR role. Used for audit purposes. Unless you have a specific reason to override, you can leave this as default. |
 
 ## Secrets
@@ -187,6 +188,20 @@ jobs:
       image_uri: ${{ needs.build.outputs.image_uri }}
       iac_path: helm/deployment
       minimum_threshold: medium
+    secrets:
+      SNYK_CLIENT_ID: ${{ secrets.SNYK_CLIENT_ID }}
+      SNYK_CLIENT_SECRET: ${{ secrets.SNYK_CLIENT_SECRET }}
+      ECR_ROLE_TO_ASSUME: ${{ secrets.ECR_ROLE_TO_ASSUME }}
+```
+
+### Exclude base image vulnerabilities from container scan results
+
+```yaml
+  sast:
+    uses: ministryofjustice/laa-reusable-github-actions/.github/workflows/sast.yml@<insert latest sha here>
+    with:
+      image_uri: ${{ needs.build.outputs.image_uri }}
+      exclude_base_image_vulns: true
     secrets:
       SNYK_CLIENT_ID: ${{ secrets.SNYK_CLIENT_ID }}
       SNYK_CLIENT_SECRET: ${{ secrets.SNYK_CLIENT_SECRET }}

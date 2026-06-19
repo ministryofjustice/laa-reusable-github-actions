@@ -23,6 +23,11 @@ on:
         required: false
         default: "high"
         type: string
+      exclude_base_image_vulns:
+        description: "Set true to pass --exclude-base-image-vulns to Snyk container scans"
+        required: false
+        default: false
+        type: boolean
       ecr_session_name:
         description: "The name of the session to use in ECR. Used for auditing purposes, set to what makes sense."
         required: false
@@ -104,12 +109,19 @@ jobs:
           MINIMUM_THRESHOLD: ${{ inputs.minimum_threshold }}
           INPUTS_IMAGE_URI: ${{ inputs.image_uri }}
           INPUTS_DOCKERFILE_PATH: ${{ inputs.dockerfile_path }}
+          INPUTS_EXCLUDE_BASE_IMAGE_VULNS: ${{ inputs.exclude_base_image_vulns }}
         run: |
+          EXCLUDE_BASE_IMAGE_VULNS_FLAG=""
+          if [ "${INPUTS_EXCLUDE_BASE_IMAGE_VULNS}" = "true" ]; then
+            EXCLUDE_BASE_IMAGE_VULNS_FLAG="--exclude-base-image-vulns"
+          fi
+
           mkdir -p sarif
           snyk container test ${INPUTS_IMAGE_URI} \
             --severity-threshold=${MINIMUM_THRESHOLD} \
             --sarif-file-output=sarif/snyk.sarif \
-            --file=${INPUTS_DOCKERFILE_PATH}
+            --file=${INPUTS_DOCKERFILE_PATH} \
+            ${EXCLUDE_BASE_IMAGE_VULNS_FLAG}
 
       - name: Monitor current dependencies
         if: ${{ env.INPUTS_IMAGE_URI != '' }}
