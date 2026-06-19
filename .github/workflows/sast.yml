@@ -23,6 +23,11 @@ on:
         required: false
         default: "high"
         type: string
+      exclude_base_image_vulns:
+        description: "Set true to pass --exclude-base-image-vulns to Snyk container scans"
+        required: false
+        default: false
+        type: boolean
       ecr_session_name:
         description: "The name of the session to use in ECR. Used for auditing purposes, set to what makes sense."
         required: false
@@ -104,12 +109,29 @@ jobs:
           MINIMUM_THRESHOLD: ${{ inputs.minimum_threshold }}
           INPUTS_IMAGE_URI: ${{ inputs.image_uri }}
           INPUTS_DOCKERFILE_PATH: ${{ inputs.dockerfile_path }}
+          INPUTS_EXCLUDE_BASE_IMAGE_VULNS: ${{ inputs.exclude_base_image_vulns }}
         run: |
+          case "${INPUTS_EXCLUDE_BASE_IMAGE_VULNS}" in
+            true|false) ;;
+            *)
+              echo "::error::exclude_base_image_vulns must be true or false"
+              exit 1
+              ;;
+          esac
+
           mkdir -p sarif
-          snyk container test ${INPUTS_IMAGE_URI} \
-            --severity-threshold=${MINIMUM_THRESHOLD} \
-            --sarif-file-output=sarif/snyk.sarif \
-            --file=${INPUTS_DOCKERFILE_PATH}
+          if [ "${INPUTS_EXCLUDE_BASE_IMAGE_VULNS}" = "true" ]; then
+            snyk container test "${INPUTS_IMAGE_URI}" \
+              --severity-threshold="${MINIMUM_THRESHOLD}" \
+              --sarif-file-output="sarif/snyk.sarif" \
+              --file="${INPUTS_DOCKERFILE_PATH}" \
+              --exclude-base-image-vulns
+          else
+            snyk container test "${INPUTS_IMAGE_URI}" \
+              --severity-threshold="${MINIMUM_THRESHOLD}" \
+              --sarif-file-output="sarif/snyk.sarif" \
+              --file="${INPUTS_DOCKERFILE_PATH}"
+          fi
 
       - name: Monitor current dependencies
         if: ${{ env.INPUTS_IMAGE_URI != '' }}
