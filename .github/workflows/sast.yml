@@ -33,6 +33,11 @@ on:
         required: false
         default: "laa-reusable-snyk"
         type: string
+      ecr_role:
+        description: "IAM Role ARN for ECR access. Use this when your repo's ECR role secret is not named ECR_ROLE_TO_ASSUME (e.g. due to a github_actions_prefix in the Cloud Platform ECR module)."
+        required: false
+        default: ""
+        type: string
     # These secrets MUST be set to authenticate
     # You can alternatively also pass a static token in to authenticate
     secrets:
@@ -65,7 +70,7 @@ jobs:
         run: |
           echo "has_token=${{ secrets.SNYK_TOKEN != '' }}" >> $GITHUB_ENV
           echo "has_oauth=${{ secrets.SNYK_CLIENT_ID != '' && secrets.SNYK_CLIENT_SECRET != ''}}" >> $GITHUB_ENV
-          echo "has_ecr_role=${{ secrets.ECR_ROLE_TO_ASSUME != '' }}" >> $GITHUB_ENV
+          echo "has_ecr_role=${{ inputs.ecr_role != '' || secrets.ECR_ROLE_TO_ASSUME != '' }}" >> $GITHUB_ENV
 
           if [[ "$has_token" == 'false' && "$has_oauth" == 'false' ]]; then
             echo "::error::Either SNYK_TOKEN or both SNYK_CLIENT_ID and SNYK_CLIENT_SECRET must be set"
@@ -86,7 +91,7 @@ jobs:
         if: ${{ env.has_ecr_role == 'true' }}
         uses: ministryofjustice/laa-reusable-github-actions/.github/actions/ecr-auth@583a60502327d7b9b7701fdb11be9f7d096cf9f5 # SHA for main as of 12/06/2026
         with:
-          ecr_role: ${{ secrets.ECR_ROLE_TO_ASSUME }}
+          ecr_role: ${{ inputs.ecr_role != '' && inputs.ecr_role || secrets.ECR_ROLE_TO_ASSUME }}
           ecr_region: "eu-west-2"
           role-session-name: ${{ inputs.ecr_session_name }}
 
