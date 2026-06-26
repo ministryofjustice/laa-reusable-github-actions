@@ -113,7 +113,7 @@ jobs:
         uses: snyk/actions/setup@9adf32b1121593767fc3c057af55b55db032dc04
 
       - name: Scan dependencies using container runtime
-        if: ${{ inputs.image_uri != '' }}
+        if: ${{ env.INPUTS_IMAGE_URI != '' }}
         env:
           SNYK_OAUTH_TOKEN: ${{ steps.auth.outputs.token }}
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
@@ -145,7 +145,7 @@ jobs:
           fi
 
       - name: Monitor current dependencies
-        if: ${{ inputs.image_uri != '' }}
+        if: ${{ env.INPUTS_IMAGE_URI != '' }}
         env:
           SNYK_OAUTH_TOKEN: ${{ steps.auth.outputs.token }}
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
