@@ -67,12 +67,16 @@ jobs:
           echo "has_oauth=${{ secrets.SNYK_CLIENT_ID != '' && secrets.SNYK_CLIENT_SECRET != ''}}" >> $GITHUB_ENV
           echo "has_ecr_role=${{ secrets.ECR_ROLE_TO_ASSUME != '' }}" >> $GITHUB_ENV
 
+          has_token="${{ secrets.SNYK_TOKEN != '' }}"
+          has_oauth="${{ secrets.SNYK_CLIENT_ID != '' && secrets.SNYK_CLIENT_SECRET != ''}}"
+          has_ecr_role="${{ secrets.ECR_ROLE_TO_ASSUME != '' }}"
+
           if [[ "$has_token" == 'false' && "$has_oauth" == 'false' ]]; then
             echo "::error::Either SNYK_TOKEN or both SNYK_CLIENT_ID and SNYK_CLIENT_SECRET must be set"
             exit 1
           fi
 
-          if [[ "${{ inputs.image_uri }}" != '' && "$HAS_ECR_ROLE" == 'false' ]]; then
+          if [[ "${{ inputs.image_uri }}" != '' && "$has_ecr_role" == 'false' ]]; then
             echo "::error::image_uri was provided but no ECR role is configured. Set the ECR_ROLE_TO_ASSUME secret or pass the ecr_role input."
             exit 1
           fi
@@ -107,7 +111,7 @@ jobs:
         uses: snyk/actions/setup@9adf32b1121593767fc3c057af55b55db032dc04
 
       - name: Scan dependencies using container runtime
-        if: ${{ env.INPUTS_IMAGE_URI != '' }}
+        if: ${{ inputs.image_uri != '' }}
         env:
           SNYK_OAUTH_TOKEN: ${{ steps.auth.outputs.token }}
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
