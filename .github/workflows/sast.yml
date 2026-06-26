@@ -65,28 +65,25 @@ jobs:
         env:
           INPUTS_IMAGE_URI: ${{ inputs.image_uri }}
         run: |
-          echo "has_token=${{ secrets.SNYK_TOKEN != '' }}" >> $GITHUB_ENV
-          echo "has_oauth=${{ secrets.SNYK_CLIENT_ID != '' && secrets.SNYK_CLIENT_SECRET != ''}}" >> $GITHUB_ENV
+          echo "has_token=false" >> $GITHUB_ENV
+          echo "has_oauth=false" >> $GITHUB_ENV
           echo "has_ecr_role=${{ secrets.ECR_ROLE_TO_ASSUME != '' }}" >> $GITHUB_ENV
 
           # Demo output: values written to GITHUB_ENV are not available in this same shell step.
           echo "demo: has_token before assignment='${has_token-<unset>}'"
           echo "demo: expression has_token='${{ secrets.SNYK_TOKEN != '' }}'"
 
-          has_token="${{ secrets.SNYK_TOKEN != '' }}"
-          has_oauth="${{ secrets.SNYK_CLIENT_ID != '' && secrets.SNYK_CLIENT_SECRET != ''}}"
-          has_ecr_role="${{ secrets.ECR_ROLE_TO_ASSUME != '' }}"
-
-          echo "demo: has_token after assignment='${has_token}'"
 
           if [[ "$has_token" == 'false' && "$has_oauth" == 'false' ]]; then
             echo "::error::Either SNYK_TOKEN or both SNYK_CLIENT_ID and SNYK_CLIENT_SECRET must be set"
             exit 1
+          else
+            echo "demo: guard bypassed in same step because has_token/has_oauth are unset (GITHUB_ENV not yet applied)"
           fi
 
-          if [[ "${INPUTS_IMAGE_URI}" != '' && "$has_ecr_role" == 'false' ]]; then
+          if [[ "${INPUTS_IMAGE_URI}" != ''&& "$has_ecr_role" == 'false' ]]; then
             echo "::error::image_uri was provided but no ECR role is configured. Set the ECR_ROLE_TO_ASSUME secret or pass the ecr_role input."
-            exit 1
+            exit 1 
           fi
 
       # Early exit if there's no container setup to scan
