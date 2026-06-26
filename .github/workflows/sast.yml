@@ -33,11 +33,6 @@ on:
         required: false
         default: "laa-reusable-snyk"
         type: string
-      ecr_role:
-        description: "IAM Role ARN for ECR access. Use this when your repo's ECR role secret is not named ECR_ROLE_TO_ASSUME (e.g. due to a github_actions_prefix in the Cloud Platform ECR module)."
-        required: false
-        default: ""
-        type: string
     # These secrets MUST be set to authenticate
     # You can alternatively also pass a static token in to authenticate
     secrets:
@@ -68,15 +63,11 @@ jobs:
       # Secrets can't be used in if-checks so we have to define a global flag to verify
       - name: Check if we have tokens defined
         run: |
-          HAS_TOKEN="${{ secrets.SNYK_TOKEN != '' }}"
-          HAS_OAUTH="${{ secrets.SNYK_CLIENT_ID != '' && secrets.SNYK_CLIENT_SECRET != '' }}"
-          HAS_ECR_ROLE="${{ inputs.ecr_role != '' || secrets.ECR_ROLE_TO_ASSUME != '' }}"
+          echo "has_token=${{ secrets.SNYK_TOKEN != '' }}" >> $GITHUB_ENV
+          echo "has_oauth=${{ secrets.SNYK_CLIENT_ID != '' && secrets.SNYK_CLIENT_SECRET != ''}}" >> $GITHUB_ENV
+          echo "has_ecr_role=${{ secrets.ECR_ROLE_TO_ASSUME != '' }}" >> $GITHUB_ENV
 
-          echo "has_token=$HAS_TOKEN" >> $GITHUB_ENV
-          echo "has_oauth=$HAS_OAUTH" >> $GITHUB_ENV
-          echo "has_ecr_role=$HAS_ECR_ROLE" >> $GITHUB_ENV
-
-          if [[ "$HAS_TOKEN" == 'false' && "$HAS_OAUTH" == 'false' ]]; then
+          if [[ "$has_token" == 'false' && "$has_oauth" == 'false' ]]; then
             echo "::error::Either SNYK_TOKEN or both SNYK_CLIENT_ID and SNYK_CLIENT_SECRET must be set"
             exit 1
           fi
@@ -100,7 +91,7 @@ jobs:
         if: ${{ env.has_ecr_role == 'true' }}
         uses: ministryofjustice/laa-reusable-github-actions/.github/actions/ecr-auth@583a60502327d7b9b7701fdb11be9f7d096cf9f5 # SHA for main as of 12/06/2026
         with:
-          ecr_role: ${{ inputs.ecr_role != '' && inputs.ecr_role || secrets.ECR_ROLE_TO_ASSUME }}
+          ecr_role: ${{ secrets.ECR_ROLE_TO_ASSUME }}
           ecr_region: "eu-west-2"
           role-session-name: ${{ inputs.ecr_session_name }}
 
@@ -148,7 +139,7 @@ jobs:
           fi
 
       - name: Monitor current dependencies
-        if: ${{ env.INPUTS_IMAGE_URI != '' }}
+        if: ${{ inputs.image_uri != '' }}
         env:
           SNYK_OAUTH_TOKEN: ${{ steps.auth.outputs.token }}
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
@@ -195,3 +186,7 @@ jobs:
         uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4.36.2
         with:
           sarif_file: "sarif"
+
+#      - name: Fail if container scan found issues
+#        if: ${{ always() && steps.container_scan.outcome == 'failure' }}
+#        run: exit 1
