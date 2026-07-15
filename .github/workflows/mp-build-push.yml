@@ -97,7 +97,7 @@ jobs:
     needs: build_push
     uses: ministryofjustice/laa-reusable-github-actions/.github/workflows/sast.yml@0cb7eb8ab4bf643986ab36ecf3ffcdffa9b55214 # SHA for main as of 3 JUN 2026
     with:
-      image_uri: ${{ steps.output.outputs.image_uri }}
+      image_uri: ${{ needs.build_push.outputs.image_uri }}
       dockerfile_path: ${{ inputs.dockerfile_path }}
     secrets:
       SNYK_CLIENT_ID: ${{ secrets.SNYK_CLIENT_ID }}
