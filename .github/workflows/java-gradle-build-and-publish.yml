@@ -1,0 +1,264 @@
+name: Java - Gradle build and publish
+
+on:
+  workflow_call:
+    inputs:
+      java_version:
+        type: string
+        required: false
+        default: '25'
+      java_distribution:
+        type: string
+        required: false
+        default: temurin
+      integration_test_task:
+        type: string
+        required: false
+        default: ''
+      build_command:
+        type: string
+        required: false
+        default: build
+      build_args:
+        type: string
+        required: false
+        default: ''
+      release_type:
+        type: string
+        required: false
+        default: ''
+      override_version:
+        type: string
+        required: false
+        default: ''
+      jacoco_coverage_report:
+        type: boolean
+        required: false
+        default: true
+      junit_results:
+        type: boolean
+        required: false
+        default: true
+      jacoco_coverage_report_path:
+        type: string
+        required: false
+        default: build/reports/jacoco
+      junit_results_path:
+        type: string
+        required: false
+        default: build/test-results
+      junit_report_path:
+        type: string
+        required: false
+        default: build/reports/tests
+      junit_report:
+        type: boolean
+        required: false
+        default: true
+      checkstyle_report:
+        type: boolean
+        required: false
+        default: true
+      checkstyle_report_path:
+        type: string
+        required: false
+        default: build/reports/checkstyle
+      semgrep_check:
+        type: boolean
+        required: false
+        default: false
+      github_bot_username:
+        type: string
+        required: false
+        default: github-actions-bot
+    outputs:
+      published_artifact_version:
+        description: Version published by this workflow
+        value: ${{ jobs.build-and-publish.outputs.published_artifact_version }}
+    secrets:
+      gh_token:
+        required: true
+      aws_region:
+        required: false
+      sonatype_username:
+        required: false
+      sonatype_password:
+        required: false
+      gpg_signing_key:
+        required: false
+      gpg_passphrase:
+        required: false
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  semgrep-scan:
+    if: ${{ inputs.semgrep_check }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ministryofjustice/laa-reusable-github-actions/.github/actions/semgrep-scan@3bc3739493639a3921c9b43b9dbbb5b5e02027cf # feat/java-pipeline-refactor 2026-07-22
+
+  build-and-publish:
+    needs: semgrep-scan
+    if: ${{ always() && (!inputs.semgrep_check || (needs.semgrep-scan.result != 'failure' && needs.semgrep-scan.result != 'cancelled')) }}
+    runs-on: ubuntu-latest
+    outputs:
+      published_artifact_version: ${{ steps.capture-version.outputs.published_artifact_version }}
+    env:
+      GITHUB_TOKEN: ${{ secrets.gh_token }}
+      AWS_REGION: ${{ secrets.aws_region }}
+      SONATYPE_USERNAME: ${{ secrets.sonatype_username }}
+      SONATYPE_PASSWORD: ${{ secrets.sonatype_password }}
+      GPG_SIGNING_KEY: ${{ secrets.gpg_signing_key }}
+      GPG_PASSPHRASE: ${{ secrets.gpg_passphrase }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          token: ${{ secrets.gh_token }}
+
+      - name: Compute release version
+        id: compute
+        if: ${{ inputs.release_type != 'none' }}
+        uses: ministryofjustice/laa-reusable-github-actions/.github/actions/compute-version@3bc3739493639a3921c9b43b9dbbb5b5e02027cf # feat/java-pipeline-refactor 2026-07-22
+        with:
+          bump: ${{ inputs.release_type != 'snapshot' && inputs.release_type || '' }}
+
+      - name: Compute snapshot version
+        id: snapshot
+        if: ${{ inputs.release_type == 'snapshot' && inputs.override_version == '' }}
+        env:
+          BUMP_TYPE: ${{ steps.compute.outputs.bump_type }}
+          MAJOR: ${{ steps.compute.outputs.major }}
+          MINOR: ${{ steps.compute.outputs.minor }}
+          PATCH: ${{ steps.compute.outputs.patch }}
+        run: |
+          set -euo pipefail
+          patch="$PATCH"
+          if [[ "$BUMP_TYPE" == "none" ]]; then patch=$((patch + 1)); fi
+          version="${MAJOR}.${MINOR}.${patch}-$(git rev-parse --short HEAD)-SNAPSHOT"
+          echo "snapshot_version=${version}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up JDK ${{ inputs.java_version }}
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+        with:
+          java-version: ${{ inputs.java_version }}
+          distribution: ${{ inputs.java_distribution }}
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # v6.1.0
+
+      - name: Build and test
+        env:
+          BUILD_ARGS: ${{ inputs.build_args }}
+          BUILD_COMMAND: ${{ inputs.build_command }}
+        run: |
+          args=()
+          if [[ -n "$BUILD_ARGS" ]]; then read -r -a args <<< "$BUILD_ARGS"; fi
+          ./gradlew "$BUILD_COMMAND" "${args[@]}"
+
+      - name: Test coverage verification
+        if: ${{ inputs.jacoco_coverage_report }}
+        run: ./gradlew jacocoTestCoverageVerification
+
+      - name: Configure Testcontainers Docker API compatibility
+        run: echo "api.version=1.44" > ~/.docker-java.properties
+
+      - name: Integration test
+        if: ${{ inputs.integration_test_task != '' }}
+        run: ./gradlew "${{ inputs.integration_test_task }}"
+
+      - name: Create release tag
+        id: tag
+        if: ${{ inputs.release_type != 'snapshot' && steps.compute.outputs.next_version != '' }}
+        uses: ministryofjustice/laa-reusable-github-actions/.github/actions/git-release@3bc3739493639a3921c9b43b9dbbb5b5e02027cf # feat/java-pipeline-refactor 2026-07-22
+        with:
+          tag: ${{ steps.compute.outputs.next_version }}
+          github_bot_username: ${{ inputs.github_bot_username }}
+          github_token: ${{ secrets.gh_token }}
+          create_github_release: 'false'
+
+      - name: Publish release artifact
+        if: ${{ steps.tag.outputs.gtag != '' }}
+        env:
+          VERSION: ${{ steps.tag.outputs.gtag }}
+        run: |
+          if [[ -n "$SONATYPE_USERNAME" && -n "$SONATYPE_PASSWORD" && -n "$GPG_SIGNING_KEY" && -n "$GPG_PASSPHRASE" ]]; then
+            ./gradlew publishToSonatype closeAndReleaseSonatypeStagingRepository -Pversion="${VERSION#v}"
+          else
+            ./gradlew publish -Pversion="${VERSION#v}"
+          fi
+
+      - name: Create GitHub release
+        if: ${{ steps.tag.outputs.gtag != '' }}
+        uses: ministryofjustice/laa-reusable-github-actions/.github/actions/git-release@3bc3739493639a3921c9b43b9dbbb5b5e02027cf # feat/java-pipeline-refactor 2026-07-22
+        with:
+          tag: ${{ steps.tag.outputs.gtag }}
+          github_bot_username: ${{ inputs.github_bot_username }}
+          github_token: ${{ secrets.gh_token }}
+
+      - name: Publish snapshot
+        if: ${{ inputs.release_type == 'snapshot' }}
+        env:
+          VERSION: ${{ inputs.override_version || steps.snapshot.outputs.snapshot_version }}
+        run: |
+          if [[ -n "$SONATYPE_USERNAME" && -n "$SONATYPE_PASSWORD" && -n "$GPG_SIGNING_KEY" && -n "$GPG_PASSPHRASE" ]]; then
+            ./gradlew publishToSonatype -Pversion="$VERSION"
+          else
+            ./gradlew publish -Pversion="$VERSION"
+          fi
+
+      - name: Capture published version
+        id: capture-version
+        env:
+          OVERRIDE_VERSION: ${{ inputs.override_version }}
+          RELEASE_TAG: ${{ steps.tag.outputs.gtag }}
+          SNAPSHOT_VERSION: ${{ steps.snapshot.outputs.snapshot_version }}
+        run: |
+          set -euo pipefail
+          if [[ -n "$RELEASE_TAG" ]]; then
+            version="${RELEASE_TAG#v}"
+          elif [[ -n "$SNAPSHOT_VERSION" ]]; then
+            version="$SNAPSHOT_VERSION"
+          elif [[ -n "$OVERRIDE_VERSION" ]]; then
+            version="$OVERRIDE_VERSION"
+          else
+            version=$(grep '^version=' gradle.properties | cut -d= -f2)
+          fi
+          echo "published_artifact_version=${version}" >> "$GITHUB_OUTPUT"
+          echo "Artifact version: \`${version}\`" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload test results
+        if: ${{ inputs.junit_results }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: test-results
+          path: ${{ inputs.junit_results_path }}
+          retention-days: 14
+
+      - name: Upload test report
+        if: ${{ inputs.junit_report }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: test-report
+          path: ${{ inputs.junit_report_path }}
+          retention-days: 14
+
+      - name: Upload Checkstyle report
+        if: ${{ inputs.checkstyle_report }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: checkstyle-report
+          path: ${{ inputs.checkstyle_report_path }}
+          retention-days: 14
+
+      - name: Upload JaCoCo coverage report
+        if: ${{ inputs.jacoco_coverage_report }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: jacoco-coverage-report
+          path: ${{ inputs.jacoco_coverage_report_path }}
+          retention-days: 14

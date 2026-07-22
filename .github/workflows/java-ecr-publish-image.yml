@@ -1,0 +1,176 @@
+name: Java - Publish image to ECR
+
+on:
+  workflow_call:
+    inputs:
+      java_version:
+        type: string
+        required: false
+        default: '25'
+      java_distribution:
+        type: string
+        required: false
+        default: temurin
+      image_version:
+        type: string
+        required: true
+      dockerfile_path:
+        type: string
+        required: false
+        default: ''
+      docker_build_args:
+        type: string
+        required: false
+        default: ''
+      jar_subproject:
+        type: string
+        required: false
+        default: ''
+      image_scan:
+        type: boolean
+        required: false
+        default: true
+      image_scan_severity:
+        type: string
+        required: false
+        default: medium
+      image_scan_fail_on:
+        type: string
+        required: false
+        default: upgradable
+      image_scan_policy_path:
+        type: string
+        required: false
+        default: .snyk
+      image_scan_upload_sarif:
+        type: boolean
+        required: false
+        default: true
+      publish:
+        type: boolean
+        required: false
+        default: true
+      tag_with_latest:
+        type: boolean
+        required: false
+        default: false
+    outputs:
+      published_image_version:
+        description: Version of the image published to ECR
+        value: ${{ jobs.publish-image.outputs.published_image_version }}
+    secrets:
+      ecr_region:
+        required: true
+      ecr_repository:
+        required: true
+      ecr_role_to_assume:
+        required: true
+      snyk_token:
+        required: false
+      snyk_client_id:
+        required: false
+      snyk_client_secret:
+        required: false
+      ecr_registry:
+        required: false
+      root_certificate:
+        required: false
+      binding_directory:
+        required: false
+      tls_keystore_password:
+        required: false
+
+permissions:
+  contents: read
+  id-token: write
+  security-events: write
+
+jobs:
+  publish-image:
+    runs-on: ubuntu-latest
+    outputs:
+      published_image_version: ${{ steps.published.outputs.published_image_version }}
+    env:
+      ROOT_CERTIFICATE: ${{ secrets.root_certificate }}
+      TLS_KEYSTORE_PASSWORD: ${{ secrets.tls_keystore_password }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Set up JDK ${{ inputs.java_version }}
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+        with:
+          java-version: ${{ inputs.java_version }}
+          distribution: ${{ inputs.java_distribution }}
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # v6.1.0
+
+      - name: Configure certificate binding
+        if: ${{ env.ROOT_CERTIFICATE != '' }}
+        env:
+          BINDING_DIRECTORY: ${{ secrets.binding_directory }}
+        run: |
+          test -n "$BINDING_DIRECTORY" || { echo "::error::A binding directory is required."; exit 1; }
+          mkdir -p "$BINDING_DIRECTORY"
+          echo "$ROOT_CERTIFICATE" > "$BINDING_DIRECTORY/root_cert.pem"
+          echo "ca-certificates" > "$BINDING_DIRECTORY/type"
+
+      - name: Assemble application
+        if: ${{ inputs.dockerfile_path != '' }}
+        run: ./gradlew assemble
+
+      - name: Authenticate with ECR
+        if: ${{ inputs.publish }}
+        id: ecr
+        uses: ministryofjustice/laa-reusable-github-actions/.github/actions/ecr-auth@3bc3739493639a3921c9b43b9dbbb5b5e02027cf # feat/java-pipeline-refactor 2026-07-22
+        with:
+          ecr_region: ${{ secrets.ecr_region }}
+          ecr_role: ${{ secrets.ecr_role_to_assume }}
+          role-session-name: reusable-image-${{ github.run_id }}-${{ github.run_attempt }}
+          account_ids: ${{ secrets.ecr_registry }}
+
+      - name: Build image
+        id: build
+        uses: ministryofjustice/laa-reusable-github-actions/.github/actions/build-and-push@3bc3739493639a3921c9b43b9dbbb5b5e02027cf # feat/java-pipeline-refactor 2026-07-22
+        with:
+          image_registry: ${{ inputs.publish && steps.ecr.outputs.image_registry || 'registry' }}
+          image_repo: ${{ inputs.publish && secrets.ecr_repository || 'repository' }}
+          image_tag: ${{ inputs.image_version }}
+          build_mode: ${{ inputs.dockerfile_path != '' && 'dockerfile' || 'gradle-buildpacks' }}
+          dockerfile_path: ${{ inputs.dockerfile_path }}
+          docker_build_args: ${{ inputs.docker_build_args }}
+          jar_subproject: ${{ inputs.jar_subproject }}
+          additional_image_tags: ${{ inputs.tag_with_latest && '["latest"]' || '[]' }}
+          push: 'false'
+
+      - name: Scan image
+        if: ${{ inputs.image_scan }}
+        uses: ministryofjustice/laa-reusable-github-actions/.github/actions/image-scan@3bc3739493639a3921c9b43b9dbbb5b5e02027cf # feat/java-pipeline-refactor 2026-07-22
+        with:
+          image_uri: ${{ steps.build.outputs.image_uri }}
+          dockerfile_path: ${{ inputs.dockerfile_path }}
+          snyk_token: ${{ secrets.snyk_token }}
+          snyk_client_id: ${{ secrets.snyk_client_id }}
+          snyk_client_secret: ${{ secrets.snyk_client_secret }}
+          severity: ${{ inputs.image_scan_severity }}
+          fail_on: ${{ inputs.image_scan_fail_on }}
+          policy_path: ${{ inputs.image_scan_policy_path }}
+          upload_sarif: ${{ inputs.image_scan_upload_sarif }}
+
+      - name: Publish image
+        if: ${{ inputs.publish }}
+        uses: ministryofjustice/laa-reusable-github-actions/.github/actions/build-and-push@3bc3739493639a3921c9b43b9dbbb5b5e02027cf # feat/java-pipeline-refactor 2026-07-22
+        with:
+          image_registry: ${{ steps.ecr.outputs.image_registry }}
+          image_repo: ${{ secrets.ecr_repository }}
+          image_tag: ${{ inputs.image_version }}
+          dockerfile_path: ${{ inputs.dockerfile_path }}
+          additional_image_tags: ${{ inputs.tag_with_latest && '["latest"]' || '[]' }}
+          build: 'false'
+
+      - name: Summarise published image
+        id: published
+        if: ${{ inputs.publish }}
+        run: |
+          echo "published_image_version=${{ inputs.image_version }}" >> "$GITHUB_OUTPUT"
+          echo "Published image version: \`${{ inputs.image_version }}\`" >> "$GITHUB_STEP_SUMMARY"
