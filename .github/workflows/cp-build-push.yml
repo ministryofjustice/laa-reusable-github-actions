@@ -12,6 +12,31 @@ on:
         required: false
         type: string
         default: Dockerfile #--Dockerfile in current working directory
+      build_mode:
+        description: "Image build mode: dockerfile or gradle-buildpacks"
+        required: false
+        type: string
+        default: dockerfile
+      java_version:
+        description: "Java version used for gradle-buildpacks builds"
+        required: false
+        type: string
+        default: '25'
+      java_distribution:
+        description: "Java distribution used for gradle-buildpacks builds"
+        required: false
+        type: string
+        default: temurin
+      jar_subproject:
+        description: "Gradle subproject containing the bootBuildImage task"
+        required: false
+        type: string
+        default: ''
+      docker_build_args:
+        description: "Additional arguments passed to Dockerfile builds"
+        required: false
+        type: string
+        default: ''
       app_name:
         description: "App Name"
         required: true
@@ -64,9 +89,20 @@ jobs:
     - name: Git Checkout
       uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 #--v7.0.0
 
+    - name: Set up JDK ${{ inputs.java_version }}
+      if: ${{ inputs.build_mode == 'gradle-buildpacks' }}
+      uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+      with:
+        java-version: ${{ inputs.java_version }}
+        distribution: ${{ inputs.java_distribution }}
+
+    - name: Setup Gradle
+      if: ${{ inputs.build_mode == 'gradle-buildpacks' }}
+      uses: gradle/actions/setup-gradle@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # v6.1.0
+
     - name: ECR Auth
       id: auth
-      uses: ministryofjustice/laa-reusable-github-actions/.github/actions/ecr-auth@583a60502327d7b9b7701fdb11be9f7d096cf9f5 # SHA for main as of 12/06/2026
+      uses: ministryofjustice/laa-reusable-github-actions/.github/actions/ecr-auth@3529a4adc1f60cfe6584081795c3d3d917599a4a # feat/java-pipeline-refactor 2026-07-13
       with:
         ecr_region: ${{ vars.ECR_REGION }}
         ecr_role: ${{ secrets.ECR_ROLE_TO_ASSUME }}
@@ -74,9 +110,12 @@ jobs:
 
     - name: Build and Push
       id: build
-      uses: ministryofjustice/laa-reusable-github-actions/.github/actions/build-and-push@de080adc3a989fe66cf999d57d32e7bb8d85624f # SHA for branch - TODO update to main once merged
+      uses: ministryofjustice/laa-reusable-github-actions/.github/actions/build-and-push@3529a4adc1f60cfe6584081795c3d3d917599a4a # feat/java-pipeline-refactor 2026-07-13
       with:
+        build_mode: ${{ inputs.build_mode }}
         dockerfile_path: ${{ inputs.dockerfile_path }}
+        docker_build_args: ${{ inputs.docker_build_args }}
+        jar_subproject: ${{ inputs.jar_subproject }}
         image_registry: ${{ steps.auth.outputs.image_registry }}
         image_repo: ${{ vars.ECR_REPOSITORY }}
         image_tag: ${{ inputs.image_tag }}
@@ -89,7 +128,7 @@ jobs:
         echo image_registry=${{ steps.build.outputs.image_registry }} >> "$GITHUB_OUTPUT"
         echo image_repo=${{ steps.build.outputs.image_repo }} >> "$GITHUB_OUTPUT"
         echo image_tag=${{ steps.build.outputs.image_tag }} >> "$GITHUB_OUTPUT"
-        echo image_uri="${{ steps.build.outputs.image_registry }}/${{ steps.build.outputs.image_repo }}:${{ steps.build.outputs.image_tag }}" >> "$GITHUB_OUTPUT"
+        echo image_uri=${{ steps.build.outputs.image_uri }} >> "$GITHUB_OUTPUT"
 
     outputs:
       image_registry: ${{ steps.output.outputs.image_registry }}
@@ -99,10 +138,10 @@ jobs:
 
   scan:
     needs: build_push
-    uses: ministryofjustice/laa-reusable-github-actions/.github/workflows/sast.yml@0cb7eb8ab4bf643986ab36ecf3ffcdffa9b55214 # SHA for main as of 3 JUN 2026
+    uses: ministryofjustice/laa-reusable-github-actions/.github/workflows/sast.yml@3529a4adc1f60cfe6584081795c3d3d917599a4a # feat/java-pipeline-refactor 2026-07-13
     with:
       image_uri: ${{ needs.build_push.outputs.image_uri }}
-      dockerfile_path: ${{ inputs.dockerfile_path }}
+      dockerfile_path: ${{ inputs.build_mode == 'dockerfile' && inputs.dockerfile_path || '' }}
       ecr_session_name: "github-cicd-${{ inputs.app_name }}-scan-${{ github.run_number }}"
     secrets:
       SNYK_CLIENT_ID: ${{ secrets.SNYK_CLIENT_ID }}

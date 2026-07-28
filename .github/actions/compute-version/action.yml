@@ -1,0 +1,128 @@
+name: "Compute version"
+description: >
+  Resolves the previous Release Tag, detects the Bump Type from Conventional Commits,
+  and computes the next semver version. Used by release pipelines to drive a
+  git-tag-based release process.
+
+  Tag resolution: prefers v{semver} tags (new scheme); falls back to {repo-name}-{semver}
+  tags (old Gradle Release Plugin scheme). The fallback can be removed once all
+  repositories have at least one v-prefix Release Tag.
+
+inputs:
+  bump:
+    description: >
+      Override the detected bump type. One of: major | minor | patch | none.
+      When empty (default), bump type is auto-detected from Conventional Commits.
+    required: false
+    default: ''
+
+outputs:
+  prev_tag:
+    description: "Last Release Tag found (e.g. v1.2.3), or v0.0.0 if none."
+    value: ${{ steps.compute.outputs.prev_tag }}
+  bump_type:
+    description: "Detected bump type: major | minor | patch | none."
+    value: ${{ steps.compute.outputs.bump_type }}
+  major:
+    description: "Major component of the next version (or current if bump_type=none)."
+    value: ${{ steps.compute.outputs.major }}
+  minor:
+    description: "Minor component of the next version (or current if bump_type=none)."
+    value: ${{ steps.compute.outputs.minor }}
+  patch:
+    description: "Patch component of the next version (or current if bump_type=none)."
+    value: ${{ steps.compute.outputs.patch }}
+  next_version:
+    description: "Next Release Tag (e.g. v1.3.0), or empty string when bump_type=none."
+    value: ${{ steps.compute.outputs.next_version }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Compute version
+      id: compute
+      shell: bash
+      env:
+        BUMP_OVERRIDE: ${{ inputs.bump }}
+      run: |
+        set -euo pipefail
+
+        REPO_NAME="$(basename "$(git rev-parse --show-toplevel)")"
+
+        # Tag resolution: prefer v-prefix tags (new scheme); fall back to {repo-name}-{version}
+        # or bare semver tags (old Gradle Release Plugin schemes). Fallbacks can be removed once
+        # all repositories have at least one v-prefix Release Tag.
+        PREV_TAG_REF="$(git describe --tags --abbrev=0 --match "v[0-9]*" 2>/dev/null || true)"
+        PREV_TAG="$PREV_TAG_REF"
+        if [ -z "$PREV_TAG_REF" ]; then
+          OLD_TAG="$(git describe --tags --abbrev=0 --match "${REPO_NAME}-[0-9]*" 2>/dev/null || true)"
+          if [ -n "$OLD_TAG" ]; then
+            PREV_TAG_REF="$OLD_TAG"
+            PREV_TAG="v${OLD_TAG#${REPO_NAME}-}"
+          fi
+        fi
+        if [ -z "$PREV_TAG_REF" ]; then
+          BARE_TAG="$(git describe --tags --abbrev=0 --match "[0-9]*" 2>/dev/null || true)"
+          if [ -n "$BARE_TAG" ]; then
+            PREV_TAG_REF="$BARE_TAG"
+            PREV_TAG="v${BARE_TAG}"
+          fi
+        fi
+        PREV_TAG="${PREV_TAG:-v0.0.0}"
+
+        if [[ -n "$PREV_TAG_REF" ]] && git merge-base --is-ancestor "$PREV_TAG_REF" HEAD 2>/dev/null; then
+          COMMITS="${PREV_TAG_REF}..HEAD"
+        else
+          COMMITS="HEAD"
+        fi
+
+        # Bump-type detection: use BUMP_OVERRIDE if set, otherwise detect from Conventional Commits.
+        # Defaults to 'patch' if no pattern matches, ensuring every push to main produces a release.
+        # Use release_type=none to explicitly skip releasing.
+        # Note: grep without -m1 avoids SIGPIPE/pipefail false-negatives on large repos.
+        BUMP="patch"
+        if [[ -n "${BUMP_OVERRIDE:-}" ]]; then
+          BUMP="$BUMP_OVERRIDE"
+        elif (git log --no-merges --format=%s "$COMMITS" | grep -Eq '^[a-z]+(\([^)]+\))?!: '); then
+          BUMP="major"
+        elif (git log --no-merges --format=%B "$COMMITS" | grep -Eq 'BREAKING[ -]CHANGE:'); then
+          BUMP="major"
+        elif (git log --no-merges --format=%s "$COMMITS" | grep -Eq '^feat(\([^)]+\))?: '); then
+          BUMP="minor"
+        fi
+
+        case "$BUMP" in
+          major|minor|patch|none) ;;
+          *)
+            echo "::error::Unsupported bump '${BUMP}'. Expected major, minor, patch, or none."
+            exit 1
+            ;;
+        esac
+
+        # Semver arithmetic
+        if [[ "$PREV_TAG" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+          MAJOR=${BASH_REMATCH[1]}; MINOR=${BASH_REMATCH[2]}; PATCH=${BASH_REMATCH[3]}
+        else
+          MAJOR=0; MINOR=0; PATCH=0
+        fi
+        case "$BUMP" in
+          major) MAJOR=$((MAJOR+1)); MINOR=0; PATCH=0 ;;
+          minor) MINOR=$((MINOR+1)); PATCH=0 ;;
+          patch) PATCH=$((PATCH+1)) ;;
+          none)  ;;
+        esac
+
+        NEXT_VERSION=""
+        if [[ "$BUMP" != "none" ]]; then NEXT_VERSION="v${MAJOR}.${MINOR}.${PATCH}"; fi
+
+        emit() {
+          echo "$1"
+          if [[ -n "${GITHUB_OUTPUT:-}" ]]; then echo "$1" >> "$GITHUB_OUTPUT"; fi
+        }
+
+        emit "prev_tag=${PREV_TAG}"
+        emit "bump_type=${BUMP}"
+        emit "major=${MAJOR}"
+        emit "minor=${MINOR}"
+        emit "patch=${PATCH}"
+        emit "next_version=${NEXT_VERSION}"

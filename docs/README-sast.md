@@ -48,7 +48,7 @@ change anything you don't need to.
 | Name | Required | Default | Description |
 |---|---|---|---|
 | `image_uri` | No | — | URI of the container image to scan. The workflow does not build the image; it must already exist. If omitted, the action won't do container scanning. |
-| `dockerfile_path` | No | `Dockerfile` | Path to the Dockerfile used by Snyk for context during container scanning. Relative to the top-level of the repository so unless you have a monorepo this is probably fine to leave |
+| `dockerfile_path` | No | `Dockerfile` | Path to the Dockerfile used by Snyk for context during container scanning. Set it to an empty string for an image built without a Dockerfile, such as a Gradle buildpacks image. |
 | `iac_path` | No | `""` | Path to Helm/IaC files. Leave unset to skip Infrastructure as Code scanning. |
 | `minimum_threshold` | No | `high` | Minimum severity level to report. One of: `low`, `medium`, `high`, `critical`. |
 | `exclude_base_image_vulns` | No | `false` | When `true`, appends `--exclude-base-image-vulns` to `snyk container test`. Useful when you want to focus on app-layer vulnerabilities and ignore base image findings. |

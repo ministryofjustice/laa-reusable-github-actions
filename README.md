@@ -19,6 +19,8 @@ See dedicated READMEs where available
 - [Build and Push Image (Modernisation Platform)](docs/README-mp-build-push.md)
 - [Deploy via Helm (Cloud Platform). For use with a dedicated generic-service helm chart](docs/README-cp-deploy.md)
 - [Build, Push and Deploy via Helm (Cloud Platform). For use with a dedicated generic-service helm chart](docs/README-cp-build-push-deploy.md)
+- [Java Gradle build and publish](docs/README-java-gradle-build-and-publish.md)
+- [Java image build, scan and ECR publish](docs/README-java-ecr-publish-image.md)
 
 ## Invoking a workflow
 
@@ -45,7 +47,11 @@ workflow on your remote repo by calling `ministryofjustice/laa-reusable-github-a
 - ecr-auth (bundled AWS and ECR auth)
 - helm-deploy (helm upgrade, for use with a dedicated generic-service helm chart)
 - helm-kube-score (kube-score via helm templating)
-- image-scan (trivy)
+- [build-and-push](.github/actions/build-and-push) (Dockerfile or Gradle buildpacks image build and publish)
+- [image-scan](.github/actions/image-scan) (Snyk container scanning)
+- [compute-version](.github/actions/compute-version) (release version computation from Conventional Commits)
+- [git-release](.github/actions/git-release) (idempotent Git tag and GitHub Release creation)
+- [semgrep-scan](.github/actions/semgrep-scan) (language-agnostic Semgrep security scanning)
 - secret-detection (trufflehog)
 
 ## Invoking an action

@@ -12,6 +12,18 @@ inputs:
     required: true
     description: "Dockerfile Path"
     default: "Dockerfile" #--Dockerfile in current working directory
+  build_mode:
+    required: false
+    description: "Image build mode: 'dockerfile' or 'gradle-buildpacks'"
+    default: "dockerfile"
+  docker_build_args:
+    required: false
+    description: "Additional arguments passed to docker build in dockerfile mode"
+    default: ""
+  jar_subproject:
+    required: false
+    description: "Gradle subproject containing the bootBuildImage task"
+    default: ""
   image_tag:
     required: true
     description: "Image Tag"
@@ -24,6 +36,14 @@ inputs:
     required: false
     description: "JSON array of additional tags to apply to the image, e.g. '[\"latest\",\"stable\"]'"
     default: "[]"
+  push:
+    required: false
+    description: "Push the image and any additional tags to the registry"
+    default: "true"
+  build:
+    required: false
+    description: "Build the image before applying tags and optionally pushing it"
+    default: "true"
 
 outputs:
   image_registry:
@@ -43,34 +63,81 @@ runs:
   using: "composite"
 
   steps:
-  - name: Docker Build
+  - name: Build and Push
     id: build_and_push
     run: |
-      docker build . \
-        -t "${{ inputs.image_registry }}/${{ inputs.image_repo }}:${{ inputs.image_tag }}" \
-        -f "${{ inputs.dockerfile_path }}" \
-        ${{ inputs.dockerfile_requires_git == 'true' && '--secret id=git_token,env=GIT_TOKEN' || '' }}
+      set -euo pipefail
+      image_name="${IMAGE_REGISTRY}/${IMAGE_REPO}:${IMAGE_TAG}"
 
-      docker push "${{ inputs.image_registry }}/${{ inputs.image_repo }}:${{ inputs.image_tag }}"
-
-      ADDITIONAL_TAGS='${{ inputs.additional_image_tags }}'
-      if [ -n "$ADDITIONAL_TAGS" ] && [ "$ADDITIONAL_TAGS" != "[]" ]; then
-        echo "$ADDITIONAL_TAGS" | jq -r '.[]' | while read -r tag; do
-          docker tag \
-            "${{ inputs.image_registry }}/${{ inputs.image_repo }}:${{ inputs.image_tag }}" \
-            "${{ inputs.image_registry }}/${{ inputs.image_repo }}:${tag}"
-          docker push "${{ inputs.image_registry }}/${{ inputs.image_repo }}:${tag}"
-        done
+      if [[ "$BUILD" == "true" ]]; then
+        case "$BUILD_MODE" in
+          dockerfile)
+            docker_args=()
+            if [[ -n "$DOCKER_BUILD_ARGS" ]]; then
+              read -r -a docker_args <<< "$DOCKER_BUILD_ARGS"
+            fi
+            if [[ "$DOCKERFILE_REQUIRES_GIT" == "true" ]]; then
+              docker_args+=(--secret id=git_token,env=GIT_TOKEN)
+            fi
+            docker build . -t "$image_name" -f "$DOCKERFILE_PATH" "${docker_args[@]}"
+            ;;
+          gradle-buildpacks)
+            gradle_subproject=""
+            if [[ -n "$JAR_SUBPROJECT" ]]; then
+              gradle_subproject=":${JAR_SUBPROJECT}:"
+            fi
+            ./gradlew "${gradle_subproject}bootBuildImage" --imageName "$image_name"
+            ;;
+          *)
+            echo "::error::Unsupported build_mode '${BUILD_MODE}'. Expected 'dockerfile' or 'gradle-buildpacks'."
+            exit 1
+            ;;
+        esac
       fi
+
+      additional_tags=()
+      if [ -n "$ADDITIONAL_TAGS" ] && [ "$ADDITIONAL_TAGS" != "[]" ]; then
+        mapfile -t additional_tags < <(jq -r '.[]' <<< "$ADDITIONAL_TAGS")
+      fi
+
+      for tag in "${additional_tags[@]}"; do
+        docker tag \
+          "$image_name" \
+          "${IMAGE_REGISTRY}/${IMAGE_REPO}:${tag}"
+      done
+
+      if [[ "$PUSH" != "true" ]]; then
+        exit 0
+      fi
+
+      docker push "$image_name"
+      for tag in "${additional_tags[@]}"; do
+        docker push "${IMAGE_REGISTRY}/${IMAGE_REPO}:${tag}"
+      done
     shell: bash
     env:
+      ADDITIONAL_TAGS: ${{ inputs.additional_image_tags }}
+      BUILD: ${{ inputs.build }}
+      BUILD_MODE: ${{ inputs.build_mode }}
+      DOCKERFILE_PATH: ${{ inputs.dockerfile_path }}
+      DOCKERFILE_REQUIRES_GIT: ${{ inputs.dockerfile_requires_git }}
+      DOCKER_BUILD_ARGS: ${{ inputs.docker_build_args }}
       GIT_TOKEN: ${{ github.token }}
+      IMAGE_REGISTRY: ${{ inputs.image_registry }}
+      IMAGE_REPO: ${{ inputs.image_repo }}
+      IMAGE_TAG: ${{ inputs.image_tag }}
+      JAR_SUBPROJECT: ${{ inputs.jar_subproject }}
+      PUSH: ${{ inputs.push }}
 
   - name: Output
     id: output
     run: |
-      echo image_registry=${{ inputs.image_registry }} >> "$GITHUB_OUTPUT"
-      echo image_repo=${{ inputs.image_repo }} >> "$GITHUB_OUTPUT"
-      echo image_tag=${{ inputs.image_tag }} >> "$GITHUB_OUTPUT"
-      echo image_uri="${{ inputs.image_registry }}/${{ inputs.image_repo }}:${{ inputs.image_tag }}"
+      echo "image_registry=${IMAGE_REGISTRY}" >> "$GITHUB_OUTPUT"
+      echo "image_repo=${IMAGE_REPO}" >> "$GITHUB_OUTPUT"
+      echo "image_tag=${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
+      echo "image_uri=${IMAGE_REGISTRY}/${IMAGE_REPO}:${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
     shell: bash
+    env:
+      IMAGE_REGISTRY: ${{ inputs.image_registry }}
+      IMAGE_REPO: ${{ inputs.image_repo }}
+      IMAGE_TAG: ${{ inputs.image_tag }}
