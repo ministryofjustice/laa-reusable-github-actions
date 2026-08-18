@@ -12,6 +12,31 @@ on:
         required: false
         type: string
         default: Dockerfile #--Dockerfile in current working directory
+      build_mode:
+        description: "Image build mode: dockerfile or gradle-buildpacks"
+        required: false
+        type: string
+        default: dockerfile
+      java_version:
+        description: "Java version used for gradle-buildpacks builds"
+        required: false
+        type: string
+        default: '25'
+      java_distribution:
+        description: "Java distribution used for gradle-buildpacks builds"
+        required: false
+        type: string
+        default: temurin
+      jar_subproject:
+        description: "Gradle subproject containing the bootBuildImage task"
+        required: false
+        type: string
+        default: ''
+      docker_build_args:
+        description: "Additional arguments passed to Dockerfile builds"
+        required: false
+        type: string
+        default: ''
       app_name:
         description: "App Name"
         required: true
@@ -21,6 +46,11 @@ on:
         required: false
         type: string
         default: ${{ github.sha }}
+      additional_image_tags:
+        description: "JSON array of additional tags to apply to the image, e.g. '[\"latest\",\"stable\"]'"
+        required: false
+        type: string
+        default: "[]"
       dockerfile_requires_git:
         description: "Set to 'true' if the Dockerfile needs git access"
         required: false
@@ -51,12 +81,18 @@ on:
 
 jobs:
   build_and_push:
-    uses: ministryofjustice/laa-reusable-github-actions/.github/workflows/cp-build-push.yml@0cb7eb8ab4bf643986ab36ecf3ffcdffa9b55214 # SHA for main as of 3 JUN 2026
+    uses: ministryofjustice/laa-reusable-github-actions/.github/workflows/cp-build-push.yml@5abe13ef5cc59e8dc2e71f70a6c28cd7a836a97d # feat/java-pipeline-refactor 2026-07-13
     with:
       environment: ${{ inputs.environment }}
       dockerfile_path: ${{ inputs.dockerfile_path }}
+      build_mode: ${{ inputs.build_mode }}
+      java_version: ${{ inputs.java_version }}
+      java_distribution: ${{ inputs.java_distribution }}
+      jar_subproject: ${{ inputs.jar_subproject }}
+      docker_build_args: ${{ inputs.docker_build_args }}
       app_name: ${{ inputs.app_name }}
       image_tag: ${{ inputs.image_tag }}
+      additional_image_tags: ${{ inputs.additional_image_tags }}
       dockerfile_requires_git: ${{ inputs.dockerfile_requires_git }}
     secrets: inherit
 

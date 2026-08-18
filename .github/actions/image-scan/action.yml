@@ -1,80 +1,185 @@
 name: Scan Image for Vulnerabilities
+description: Scan a container image with Snyk
 
-on:
-  workflow_call:
-    inputs:
-      image_uri:
-        description: "URI of image to scan"
-        required: true
-        type: string
-      dockerfile_path:
-        description: "Path to Dockerfile"
-        required: false
-        default: "Dockerfile"
-        type: string
-    secrets:
-      SNYK_CLIENT_ID:
-        required: true
-      SNYK_CLIENT_SECRET:
-        required: true
+inputs:
+  image_uri:
+    required: true
+    description: "URI of image to scan"
+  dockerfile_path:
+    required: false
+    description: "Path to the Dockerfile used to build the image"
+    default: "Dockerfile"
+  snyk_token:
+    required: false
+    description: "Deprecated Snyk API token; prefer OAuth client credentials"
+    default: ""
+  snyk_client_id:
+    required: false
+    description: "Snyk OAuth client ID"
+    default: ""
+  snyk_client_secret:
+    required: false
+    description: "Snyk OAuth client secret"
+    default: ""
+  severity:
+    required: false
+    description: "Minimum Snyk vulnerability severity"
+    default: "medium"
+  fail_on:
+    required: false
+    description: "Types of Snyk vulnerabilities that fail the scan"
+    default: "upgradable"
+  policy_path:
+    required: false
+    description: "Path to the Snyk policy file"
+    default: ".snyk"
+  upload_sarif:
+    required: false
+    description: "Upload the cleansed Snyk SARIF report to GitHub code scanning"
+    default: "true"
 
-jobs:
-  snyk:
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
-      security-events: write
-      actions: read
-    steps:
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+runs:
+  using: "composite"
 
-      - name: Check Dockerfile exists
-        run: |
-          if [ ! -f "${{ inputs.dockerfile_path }}" ]; then
-            echo "::error::Dockerfile not found at ${{ inputs.dockerfile_path }}"
-            exit 1
-          fi
+  steps:
+  - name: Validate Snyk credentials
+    id: validate
+    env:
+      DOCKERFILE_PATH: ${{ inputs.dockerfile_path }}
+      SNYK_CLIENT_ID: ${{ inputs.snyk_client_id }}
+      SNYK_CLIENT_SECRET: ${{ inputs.snyk_client_secret }}
+      SNYK_TOKEN: ${{ inputs.snyk_token }}
+    run: |
+      echo "oauth_required=false" >> "$GITHUB_OUTPUT"
+      echo "static_token_used=false" >> "$GITHUB_OUTPUT"
 
-      - name: Obtain Snyk OAuth token
-        id: snyk_auth
-        run: |
-          TOKEN=$(curl -s -X POST "https://api.snyk.io/oauth2/token" \
-            -H "Content-Type: application/x-www-form-urlencoded" \
-            -d "grant_type=client_credentials" \
-            -d "client_id=${{ secrets.SNYK_CLIENT_ID }}" \
-            -d "client_secret=${{ secrets.SNYK_CLIENT_SECRET }}" \
-            | jq -r '.access_token')
-          if [ -z "$TOKEN" ] || [ "$TOKEN" = "null" ]; then
-            echo "::error::Failed to obtain Snyk OAuth token"
-            exit 1
-          fi
-          echo "::add-mask::$TOKEN"
-          echo "snyk_token=$TOKEN" >> $GITHUB_OUTPUT
+      if [[ -n "$DOCKERFILE_PATH" && ! -f "$DOCKERFILE_PATH" ]]; then
+        echo "::error::Dockerfile not found at ${DOCKERFILE_PATH}"
+        exit 1
+      fi
 
-      - name: Install Snyk CLI
-        uses: snyk/actions/setup@9adf32b1121593767fc3c057af55b55db032dc04 # master
+      if [[ -z "$SNYK_TOKEN" ]] && { [[ -z "$SNYK_CLIENT_ID" ]] || [[ -z "$SNYK_CLIENT_SECRET" ]]; }; then
+        echo "::error::Provide either snyk_token or both snyk_client_id and snyk_client_secret."
+        exit 1
+      fi
 
-      - name: Snyk test
-        continue-on-error: true
-        env:
-          SNYK_OAUTH_TOKEN: ${{ steps.snyk_auth.outputs.snyk_token }}
-        run: snyk container test ${{ inputs.image_uri }} --severity-threshold=high --sarif-file-output=snyk.sarif --file=${{ inputs.dockerfile_path }}
+      if [[ -n "$SNYK_CLIENT_ID" && -n "$SNYK_CLIENT_SECRET" ]]; then
+        echo "oauth_required=true" >> "$GITHUB_OUTPUT"
+      else
+        echo "static_token_used=true" >> "$GITHUB_OUTPUT"
+      fi
+    shell: bash
 
-      - name: Snyk monitor
-        env:
-          SNYK_OAUTH_TOKEN: ${{ steps.snyk_auth.outputs.snyk_token }}
-        run: snyk container monitor ${{ inputs.image_uri }} --file=${{ inputs.dockerfile_path }}
+  - name: Obtain Snyk OAuth token
+    if: ${{ steps.validate.outputs.oauth_required == 'true' }}
+    id: snyk_auth
+    env:
+      SNYK_CLIENT_ID: ${{ inputs.snyk_client_id }}
+      SNYK_CLIENT_SECRET: ${{ inputs.snyk_client_secret }}
+    run: |
+      token=$(curl -s -X POST "https://api.snyk.io/oauth2/token" \
+        -H "Content-Type: application/x-www-form-urlencoded" \
+        -d "grant_type=client_credentials" \
+        -d "client_id=${SNYK_CLIENT_ID}" \
+        -d "client_secret=${SNYK_CLIENT_SECRET}" \
+        | jq -r '.access_token')
 
-      - name: Sanitise SARIF
-        if: always()
-        run: |
-          sed -i 's/"security-severity": "null"/"security-severity": "0"/g' snyk.sarif
-          sed -i 's/"security-severity": "undefined"/"security-severity": "0"/g' snyk.sarif
+      if [[ -z "$token" || "$token" == "null" ]]; then
+        echo "::error::Failed to obtain Snyk OAuth token"
+        exit 1
+      fi
 
-      - name: Upload SARIF
-        if: always() && hashFiles('snyk.sarif') != ''
-        uses: github/codeql-action/upload-sarif@c10b8064de6f491fea524254123dbe5e09572f13 # v4.35.1
-        with:
-          sarif_file: snyk.sarif
+      echo "::add-mask::$token"
+      echo "token=$token" >> "$GITHUB_OUTPUT"
+    shell: bash
+
+  - name: Install Snyk CLI
+    uses: snyk/actions/setup@9adf32b1121593767fc3c057af55b55db032dc04 # v1.0.0
+
+  - name: Scan image with Snyk
+    id: snyk
+    continue-on-error: true
+    env:
+      DOCKERFILE_PATH: ${{ inputs.dockerfile_path }}
+      IMAGE_URI: ${{ inputs.image_uri }}
+      POLICY_PATH: ${{ inputs.policy_path }}
+      SEVERITY: ${{ inputs.severity }}
+      SNYK_OAUTH_TOKEN: ${{ steps.snyk_auth.outputs.token }}
+      SNYK_TOKEN: ${{ inputs.snyk_token }}
+      FAIL_ON: ${{ inputs.fail_on }}
+    run: |
+      dockerfile_args=()
+      if [[ -n "$DOCKERFILE_PATH" ]]; then
+        dockerfile_args+=(--file="$DOCKERFILE_PATH")
+      fi
+
+      snyk container test "$IMAGE_URI" \
+        --org=legal-aid-agency \
+        --severity-threshold="$SEVERITY" \
+        --fail-on="$FAIL_ON" \
+        --sarif-file-output=snyk-report.sarif \
+        "${dockerfile_args[@]}" \
+        --policy-path="$POLICY_PATH"
+    shell: bash
+
+  - name: Cleanse Snyk SARIF report
+    if: ${{ inputs.upload_sarif == 'true' }}
+    run: |
+      jq '
+        .runs[].tool[].rules[]
+        |= (
+          if (
+            .properties["security-severity"] == null or
+            .properties["security-severity"] == "null" or
+            .properties["security-severity"] == "undefined" or
+            .properties["security-severity"] == ""
+          )
+          then .properties["security-severity"] =
+            (if .shortDescription.text | test("(?i)critical") then "9.0"
+             elif .shortDescription.text | test("(?i)high") then "7.0"
+             elif .shortDescription.text | test("(?i)medium") then "4.0"
+             elif .shortDescription.text | test("(?i)low") then "0.1"
+             else ""
+             end)
+          else .
+          end
+        )
+      ' snyk-report.sarif > snyk-report-cleansed.sarif
+    shell: bash
+
+  - name: Upload Snyk SARIF report
+    if: ${{ inputs.upload_sarif == 'true' }}
+    uses: github/codeql-action/upload-sarif@87557b9c84dde89fdd9b10e88954ac2f4248e463 # v4.36.1
+    with:
+      sarif_file: snyk-report-cleansed.sarif
+
+  - name: Warn about deprecated SNYK_TOKEN usage
+    if: ${{ steps.validate.outputs.static_token_used == 'true' }}
+    run: |
+      echo "::warning title=Deprecated SNYK_TOKEN::A SNYK_TOKEN was used to authenticate with Snyk. Snyk recommends OAuth 2.0 service accounts (SNYK_CLIENT_ID + SNYK_CLIENT_SECRET). SNYK_TOKEN support will be removed in a future release."
+    shell: bash
+
+  - name: Add SNYK_TOKEN migration guidance to job summary
+    if: ${{ steps.validate.outputs.static_token_used == 'true' }}
+    run: |
+      {
+        echo "## ⚠️ Deprecated: SNYK_TOKEN"
+        echo ""
+        echo "Your workflow is using \`SNYK_TOKEN\` to authenticate with Snyk."
+        echo ""
+        echo "### Why migrate?"
+        echo "Snyk recommends OAuth 2.0 service accounts for CI/CD pipelines."
+        echo ""
+        echo "### How to migrate"
+        echo "Replace \`SNYK_TOKEN\` with \`SNYK_CLIENT_ID\` and \`SNYK_CLIENT_SECRET\`"
+        echo ""
+        echo "> 🚨 **\`SNYK_TOKEN\` support will be removed in a future release.**"
+      } >> "$GITHUB_STEP_SUMMARY"
+    shell: bash
+
+  - name: Fail if Snyk found vulnerabilities
+    if: ${{ steps.snyk.outcome == 'failure' }}
+    run: |
+      echo "Snyk found vulnerabilities, see code scanning outputs."
+      exit 1
+    shell: bash

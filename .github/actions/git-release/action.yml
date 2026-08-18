@@ -1,0 +1,73 @@
+name: "Create Git release"
+description: >
+  Creates an annotated Git tag and a GitHub Release for a computed version.
+  Existing remote tags and GitHub Releases are left unchanged.
+
+inputs:
+  tag:
+    required: true
+    description: "Computed release tag to create (for example, v1.2.3)."
+  github_bot_username:
+    required: false
+    description: "GitHub bot username used to create the annotated tag."
+    default: "github-actions-bot"
+  github_token:
+    required: false
+    description: "GitHub token used to create the release. Defaults to the workflow token."
+    default: ''
+  create_github_release:
+    required: false
+    description: "Create the GitHub Release after ensuring the tag exists."
+    default: 'true'
+
+outputs:
+  gtag:
+    description: "The existing or newly-created Git release tag."
+    value: ${{ steps.create-tag.outputs.gtag }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Create Git tag
+      id: create-tag
+      shell: bash
+      env:
+        GTAG: ${{ inputs.tag }}
+        BOT_USERNAME: ${{ inputs.github_bot_username }}
+      run: |
+        set -eu
+        test -n "$GTAG"
+        git config user.name "${BOT_USERNAME}[bot]"
+        git config user.email "${BOT_USERNAME}[bot]@users.noreply.github.com"
+        if git ls-remote --tags origin | grep -q "refs/tags/${GTAG}$"; then
+          echo "Tag ${GTAG} already exists on remote. Skipping."
+          echo "gtag=${GTAG}" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+        echo "Creating Git tag [${GTAG}]"
+        git tag -a "$GTAG" -m "Release ${GTAG}"
+        git push origin "$GTAG" || {
+          EXIT=$?
+          if git ls-remote --tags origin | grep -q "refs/tags/${GTAG}$"; then
+            echo "Tag ${GTAG} was already pushed (race condition). Skipping."
+          else
+            echo "::error::Failed to push tag ${GTAG} (exit ${EXIT})"
+            exit $EXIT
+          fi
+        }
+        echo "gtag=${GTAG}" >> "$GITHUB_OUTPUT"
+
+    - name: Create GitHub Release
+      if: ${{ inputs.create_github_release == 'true' }}
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github_token || github.token }}
+        GTAG: ${{ steps.create-tag.outputs.gtag }}
+      run: |
+        test -n "$GTAG"
+        if gh release view "$GTAG" >/dev/null 2>&1; then
+          echo "Release ${GTAG} already exists. Skipping."
+          exit 0
+        fi
+        echo "Creating GitHub Release [${GTAG}]"
+        gh release create "$GTAG" --verify-tag --title "$GTAG" --generate-notes

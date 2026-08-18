@@ -1,30 +1,32 @@
-# scan-image
+# Snyk image scan
 
-Scans a container image for vulnerabilities using Snyk. Runs on every call, uploads results to GitHub Code Scanning, and tracks the image in the Snyk dashboard.
-
-> [!NOTE]
-> This workflow should be considered deprecated and instead use [sast.yml](../../workflows/sast.yml)
-
-## Usage
+Composite action that scans an existing local or registry image with Snyk, cleanses the SARIF
+report, optionally uploads it to GitHub code scanning, and fails after reporting vulnerabilities.
 
 ```yaml
-jobs:
-  scan:
-    uses: ministryofjustice/laa-reusable-github-actions/.github/workflows/scan-image.yml@0cb7eb8ab4bf643986ab36ecf3ffcdffa9b55214 # SHA for main as of 3 JUN 2026
-    with:
-      image_uri: ${{ env.ECR_IMAGE }}
-    secrets: inherit
+- name: Scan image
+  uses: ministryofjustice/laa-reusable-github-actions/.github/actions/image-scan@<immutable-sha>
+  with:
+    image_uri: ${{ steps.build.outputs.image_uri }}
+    dockerfile_path: Dockerfile
+    snyk_client_id: ${{ secrets.SNYK_CLIENT_ID }}
+    snyk_client_secret: ${{ secrets.SNYK_CLIENT_SECRET }}
+    severity: high
+    fail_on: upgradable
 ```
 
-## Inputs
+OAuth credentials are preferred. `snyk_token` is retained as a deprecated fallback and produces a
+migration warning. Set `dockerfile_path: ''` for buildpacks images without a Dockerfile.
 
-| Name | Required | Default | Description |
-|------|----------|---------|-------------|
-| `image_uri` | yes | | Full URI of the image to scan |
-| `dockerfile_path` | no | `Dockerfile` | Path to the Dockerfile relative to the repo root |
+| Input | Default | Description |
+|---|---|---|
+| `image_uri` | required | Image to scan. |
+| `dockerfile_path` | `Dockerfile` | Dockerfile context, or empty. |
+| `snyk_client_id` / `snyk_client_secret` | empty | OAuth credentials. |
+| `snyk_token` | empty | Deprecated static token. |
+| `severity` | `medium` | Minimum severity. |
+| `fail_on` | `upgradable` | Snyk failure policy. |
+| `policy_path` | `.snyk` | Policy file. |
+| `upload_sarif` | `true` | Upload to GitHub code scanning. |
 
-## Secrets
-
-`SNYK_CLIENT_ID` and `SNYK_CLIENT_SECRET` must be available in the
-calling repo. Set these at in the repository secrets and they'll be picked up
-automatically via `secrets: inherit`.
+SARIF upload requires `security-events: write` in the calling job.

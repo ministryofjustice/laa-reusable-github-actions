@@ -1,0 +1,21 @@
+name: "Semgrep scan"
+description: "Run a language-agnostic Semgrep security scan against the checked-out repository."
+
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+    - name: Run Semgrep scan
+      shell: bash
+      run: |
+        docker run --rm \
+          --volume "${GITHUB_WORKSPACE}:/src" \
+          --workdir /src \
+          --entrypoint semgrep \
+          returntocorp/semgrep \
+          scan \
+          --exclude-rule python.django.security.django-no-csrf-token.django-no-csrf-token \
+          --error \
+          --config auto
