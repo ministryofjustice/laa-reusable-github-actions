@@ -14,7 +14,7 @@ See dedicated READMEs where available
 - format
 - rspec
 - rubocop
-- snyk
+- [Snyk Test (Code and Dependencies)](docs/README-snyk-test.md)
 - [Build and Push Image (Cloud Platform)](docs/README-cp-build-push.md)
 - [Build and Push Image (Modernisation Platform)](docs/README-mp-build-push.md)
 - [Deploy via Helm (Cloud Platform). For use with a dedicated generic-service helm chart](docs/README-cp-deploy.md)
