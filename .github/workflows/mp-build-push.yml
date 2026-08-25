@@ -50,20 +50,26 @@ on:
 
 jobs:
   build_push:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     permissions:
       id-token: write
       contents: read
     environment: ${{ inputs.environment }}
 
     steps:
+    - name: Clean Actions Runner
+      id: clean_actions_runner
+      uses: ministryofjustice/action-clean-runner@390530713a326ddc099b2114f38dd0f2f8eac6da # <version>
+      with:
+        confirm: true
+        
     - name: Git Checkout
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 #--v7.0.1
 
     #--Prereq steps https://user-guide.modernisation-platform.service.justice.gov.uk/user-guide/deploying-your-application.html#using-oidc-in-your-application-deployment-pipeline
     - name: ECR Auth
       id: auth
-      uses: ministryofjustice/laa-reusable-github-actions/.github/actions/ecr-auth@583a60502327d7b9b7701fdb11be9f7d096cf9f5 # SHA for main as of 12/06/2026
+      uses: $/.github/actions/ecr-auth
       with:
         ecr_region: ${{ vars.AWS_REGION }}
         ecr_role: arn:aws:iam::${{ secrets.DEPLOYMENT_ACCOUNT_ID }}:role/modernisation-platform-oidc-cicd
@@ -72,7 +78,7 @@ jobs:
 
     - name: Build and Push
       id: build
-      uses: ministryofjustice/laa-reusable-github-actions/.github/actions/build-and-push@0cb7eb8ab4bf643986ab36ecf3ffcdffa9b55214 # SHA for main as of 3 JUN 2026
+      uses: $/.github/actions/build-and-push
       with:
         dockerfile_path: ${{ inputs.dockerfile_path }}
         image_registry: ${{ steps.auth.outputs.image_registry }}
@@ -95,7 +101,7 @@ jobs:
         
   scan:
     needs: build_push
-    uses: ministryofjustice/laa-reusable-github-actions/.github/workflows/sast.yml@0cb7eb8ab4bf643986ab36ecf3ffcdffa9b55214 # SHA for main as of 3 JUN 2026
+    uses: $/.github/workflows/sast.yml
     with:
       image_uri: ${{ needs.build_push.outputs.image_uri }}
       dockerfile_path: ${{ inputs.dockerfile_path }}
