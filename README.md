@@ -11,10 +11,11 @@ This is a beta function from Github and my be changed/break at very short notice
 See dedicated READMEs where available
 
 - brakeman
-- format
 - rspec
 - rubocop
-- snyk
+- [Static Application Security Testing (SAST - Snyk container, IaC, and code scanning)](docs/README-sast.md)
+- [Snyk Dependency (SCA) Scan](docs/README-snyk-sca-scan.md)
+- snyk (legacy Docker image scan)
 - [Build and Push Image (Cloud Platform)](docs/README-cp-build-push.md)
 - [Build and Push Image (Modernisation Platform)](docs/README-mp-build-push.md)
 - [Deploy via Helm (Cloud Platform). For use with a dedicated generic-service helm chart](docs/README-cp-deploy.md)
@@ -42,11 +43,14 @@ workflow on your remote repo by calling `ministryofjustice/laa-reusable-github-a
 ## Currently available actions
 
 - authenticate_to_cluster (k8s auth)
+- build-and-push / build_and_push_with_cache (Docker build and push to a registry)
 - ecr-auth (bundled AWS and ECR auth)
 - helm-deploy (helm upgrade, for use with a dedicated generic-service helm chart)
 - helm-kube-score (kube-score via helm templating)
 - image-scan (trivy)
+- python-linting-and-formatting
 - secret-detection (trufflehog)
+- snyk-auth (Snyk OAuth token exchange, used by the `sast.yml`, `snyk-sca-scan.yml`, and `snyk.yml` workflows)
 
 ## Invoking an action
 
@@ -72,7 +76,7 @@ In your repo's workflows you can invoke one of the github actions (available in 
           kube-namespace: ${{ secrets.KUBE_STAGING_NAMESPACE }}
 
       - name: deployment
-        ...
+      # ...
 
 ```
 

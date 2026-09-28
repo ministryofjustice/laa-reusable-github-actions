@@ -1,0 +1,162 @@
+name: Scan dependencies with Snyk
+description: >-
+  A reusable workflow to run a Snyk open-source/dependency (SCA) scan against a project's build
+  manifest. Complements sast.yml, which covers container/IaC/code scanning but not declared
+  dependencies. This is an ADDITIVE scan, not a policy requirement: LAA's Guardrail 2/8 name
+  Dependabot/Renovate, not Snyk, as the default dependency-scanning tool, so Dependabot alone
+  already satisfies Pipeline Maturity Level 2.
+on:
+  workflow_call:
+    inputs:
+      build_tool:
+        description: "Build tool used to resolve dependencies before scanning. One of: gradle|maven"
+        required: false
+        default: "gradle"
+        type: string
+      working_directory:
+        description: "Directory containing the manifest (build.gradle / pom.xml) to scan"
+        required: false
+        default: "."
+        type: string
+      minimum_threshold:
+        description: "The minimum threshold to report vulnerabilities. Must be one of low|medium|high|critical"
+        required: false
+        default: "high"
+        type: string
+      scan_all_projects:
+        description: "Set true to scan all sub-projects/modules. Required for multi-module Gradle repos, otherwise Snyk can scan an empty root build and return a false green. Internally mapped to --all-sub-projects for gradle/maven."
+        required: false
+        default: false
+        type: boolean
+      policy_path:
+        description: "Path to a .snyk policy file, relative to working_directory. Leave blank if none."
+        required: false
+        default: ".snyk"
+        type: string
+    secrets:
+      SNYK_TOKEN:
+        required: false
+      SNYK_CLIENT_ID:
+        required: false
+      SNYK_CLIENT_SECRET:
+        required: false
+
+jobs:
+  sca-scan:
+    name: Scan dependencies with Snyk
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Secrets can't be used in if-checks so we have to define a global flag to verify
+      - name: Check if we have tokens defined
+        run: |
+          echo "has_token=${{ secrets.SNYK_TOKEN != '' }}" >> $GITHUB_ENV
+          echo "has_oauth=${{ secrets.SNYK_CLIENT_ID != '' && secrets.SNYK_CLIENT_SECRET != '' }}" >> $GITHUB_ENV
+
+          has_token="${{ secrets.SNYK_TOKEN != '' }}"
+          has_oauth="${{ secrets.SNYK_CLIENT_ID != '' && secrets.SNYK_CLIENT_SECRET != '' }}"
+
+          if [[ "$has_token" == 'false' && "$has_oauth" == 'false' ]]; then
+            echo "::error::Either SNYK_TOKEN or both SNYK_CLIENT_ID and SNYK_CLIENT_SECRET must be set"
+            exit 1
+          fi
+
+      # Early exit if there's no manifest of the expected build tool to scan
+      - name: Check manifest exists
+        env:
+          INPUTS_BUILD_TOOL: ${{ inputs.build_tool }}
+          INPUTS_WORKING_DIRECTORY: ${{ inputs.working_directory }}
+        working-directory: ${{ inputs.working_directory }}
+        run: |
+          case "${INPUTS_BUILD_TOOL}" in
+            gradle)
+              if [ ! -f build.gradle ] && [ ! -f build.gradle.kts ]; then
+                echo "::error::No build.gradle(.kts) found in ${INPUTS_WORKING_DIRECTORY}"
+                exit 1
+              fi
+              ;;
+            maven)
+              if [ ! -f pom.xml ]; then
+                echo "::error::No pom.xml found in ${INPUTS_WORKING_DIRECTORY}"
+                exit 1
+              fi
+              ;;
+            *)
+              echo "::error::build_tool must be one of gradle|maven, got '${INPUTS_BUILD_TOOL}'"
+              exit 1
+              ;;
+          esac
+
+      - name: Obtain short-lived token
+        id: auth
+        uses: ministryofjustice/laa-reusable-github-actions/.github/actions/snyk-auth@6db001458db30ae747d9eb8eb25707ce52b359bc
+        if: ${{ env.has_token == 'false' }}
+        with:
+          client_id: ${{ secrets.SNYK_CLIENT_ID }}
+          client_secret: ${{ secrets.SNYK_CLIENT_SECRET }}
+
+      - name: Install Snyk CLI
+        uses: snyk/actions/setup@9adf32b1121593767fc3c057af55b55db032dc04
+
+      - name: Scan dependencies using Snyk
+        continue-on-error: false
+        env:
+          SNYK_OAUTH_TOKEN: ${{ steps.auth.outputs.token }}
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+          MINIMUM_THRESHOLD: ${{ inputs.minimum_threshold }}
+          INPUTS_BUILD_TOOL: ${{ inputs.build_tool }}
+          INPUTS_SCAN_ALL_PROJECTS: ${{ inputs.scan_all_projects }}
+          INPUTS_POLICY_PATH: ${{ inputs.policy_path }}
+          INPUTS_WORKING_DIRECTORY: ${{ inputs.working_directory }}
+        working-directory: ${{ inputs.working_directory }}
+        run: |
+          case "${INPUTS_SCAN_ALL_PROJECTS}" in
+            true|false) ;;
+            *)
+              echo "::error::scan_all_projects must be true or false"
+              exit 1
+              ;;
+          esac
+
+          mkdir -p sarif
+          extra_args=()
+          if [ "${INPUTS_SCAN_ALL_PROJECTS}" = "true" ]; then
+            case "${INPUTS_BUILD_TOOL}" in
+              gradle|maven)
+                extra_args+=(--all-sub-projects)
+                ;;
+            esac
+          fi
+          if [ -n "${INPUTS_POLICY_PATH}" ] && [ -f "${INPUTS_POLICY_PATH}" ]; then
+            extra_args+=(--policy-path="${INPUTS_POLICY_PATH}")
+          fi
+
+          snyk test \
+            --severity-threshold="${MINIMUM_THRESHOLD}" \
+            --sarif-file-output=sarif/snyk-dependencies.sarif \
+            "${extra_args[@]}"
+
+      - name: Sanitise SARIF files
+        if: always()
+        working-directory: ${{ inputs.working_directory }}
+        run: |
+          for sarif in sarif/*.sarif; do
+            if [ -f "$sarif" ]; then
+              sed -i 's/"security-severity": "null"/"security-severity": "0"/g' "$sarif"
+              sed -i 's/"security-severity": "undefined"/"security-severity": "0"/g' "$sarif"
+            fi
+          done
+
+      - name: Upload SARIF files
+        if: always() && hashFiles(format('{0}/sarif/*.sarif', inputs.working_directory)) != ''
+        uses: github/codeql-action/upload-sarif@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7
+        with:
+          sarif_file: ${{ inputs.working_directory }}/sarif
