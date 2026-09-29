@@ -50,7 +50,7 @@ workflow on your remote repo by calling `ministryofjustice/laa-reusable-github-a
 - image-scan (trivy)
 - python-linting-and-formatting
 - secret-detection (trufflehog)
-- snyk-auth (Snyk OAuth token exchange, used by the `sast.yml`, `snyk-sca-scan.yml`, and `snyk.yml` workflows)
+- snyk-auth (Snyk OAuth token exchange, used by the `sast.yml` and `snyk-sca-scan.yml` workflows)
 
 ## Invoking an action
 
@@ -76,7 +76,7 @@ In your repo's workflows you can invoke one of the github actions (available in 
           kube-namespace: ${{ secrets.KUBE_STAGING_NAMESPACE }}
 
       - name: deployment
-      # ...
+        ...
 
 ```
 

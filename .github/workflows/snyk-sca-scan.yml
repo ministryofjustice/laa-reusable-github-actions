@@ -24,7 +24,7 @@ on:
         default: "high"
         type: string
       scan_all_projects:
-        description: "Set true to scan all sub-projects/modules. Required for multi-module Gradle repos, otherwise Snyk can scan an empty root build and return a false green. Internally mapped to --all-sub-projects for gradle/maven."
+        description: "Set true to scan all sub-projects/modules. Required for multi-module Gradle/Maven repos, otherwise Snyk can scan an empty root build and return a false green. Internally mapped to --all-sub-projects for gradle, --maven-aggregate-project for maven."
         required: false
         default: false
         type: boolean
@@ -130,8 +130,11 @@ jobs:
           extra_args=()
           if [ "${INPUTS_SCAN_ALL_PROJECTS}" = "true" ]; then
             case "${INPUTS_BUILD_TOOL}" in
-              gradle|maven)
+              gradle)
                 extra_args+=(--all-sub-projects)
+                ;;
+              maven)
+                extra_args+=(--maven-aggregate-project)
                 ;;
             esac
           fi

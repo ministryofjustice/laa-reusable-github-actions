@@ -44,13 +44,13 @@ jobs:
 
 ## Inputs
 
-| Name                | Required | Default  | Description                                                                                                                                                                                                                                                                                                                                                         |
-|---------------------|----------|----------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `build_tool`        | No       | `gradle` | Build tool used to resolve dependencies before scanning. One of `gradle`, `maven`. Determines only which manifest file is checked for; `snyk test` auto-detects the manifest itself.                                                                                                                                                                                |
-| `working_directory` | No       | `.`      | Directory containing the manifest (`build.gradle`/`build.gradle.kts`/`pom.xml`) to scan.                                                                                                                                                                                                                                                                            |
-| `minimum_threshold` | No       | `high`   | Minimum severity level to fail on. One of: `low`, `medium`, `high`, `critical`.                                                                                                                                                                                                                                                                                     |
-| `scan_all_projects` | No       | `false`  | Set `true` to scan all sub-projects/modules in a monorepo. **Required for multi-module Gradle repos** — without it Snyk can scan an empty root build and return a false-clean result. Internally mapped to `--all-sub-projects` for `gradle`/`maven`; kept build-tool-agnostic in name so it can map to a different Snyk flag if other build tools are added later. |
-| `policy_path`       | No       | `.snyk`  | Path to a `.snyk` policy file, relative to `working_directory`. Leave blank if none exists — the workflow only passes `--policy-path` when the file is present.                                                                                                                                                                                                     |
+| Name                | Required | Default  | Description                                                                                                                                                                                                                                                                                                                                                                                                |
+|---------------------|----------|----------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `build_tool`        | No       | `gradle` | Build tool used to resolve dependencies before scanning. One of `gradle`, `maven`. Determines only which manifest file is checked for; `snyk test` auto-detects the manifest itself.                                                                                                                                                                                                                       |
+| `working_directory` | No       | `.`      | Directory containing the manifest (`build.gradle`/`build.gradle.kts`/`pom.xml`) to scan.                                                                                                                                                                                                                                                                                                                   |
+| `minimum_threshold` | No       | `high`   | Minimum severity level to fail on. One of: `low`, `medium`, `high`, `critical`.                                                                                                                                                                                                                                                                                                                            |
+| `scan_all_projects` | No       | `false`  | Set `true` to scan all sub-projects/modules in a monorepo. **Required for multi-module Gradle/Maven repos** — without it Snyk can scan an empty root build and return a false-clean result. Internally mapped to `--all-sub-projects` for `gradle`, `--maven-aggregate-project` for `maven`; kept build-tool-agnostic in name so it can map to a different Snyk flag if other build tools are added later. |
+| `policy_path`       | No       | `.snyk`  | Path to a `.snyk` policy file, relative to `working_directory`. Leave blank if none exists — the workflow only passes `--policy-path` when the file is present.                                                                                                                                                                                                                                            |
 
 ## Secrets
 
@@ -95,6 +95,10 @@ otherwise cause the upload to fail.
 jobs:
   sca-scan:
     uses: ministryofjustice/laa-reusable-github-actions/.github/workflows/snyk-sca-scan.yml@<insert latest sha here>
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
     secrets:
       SNYK_CLIENT_ID: ${{ secrets.SNYK_CLIENT_ID }}
       SNYK_CLIENT_SECRET: ${{ secrets.SNYK_CLIENT_SECRET }}
@@ -106,6 +110,10 @@ jobs:
 jobs:
   sca-scan:
     uses: ministryofjustice/laa-reusable-github-actions/.github/workflows/snyk-sca-scan.yml@<insert latest sha here>
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
     with:
       scan_all_projects: true
     secrets:
@@ -119,6 +127,10 @@ jobs:
 jobs:
   sca-scan:
     uses: ministryofjustice/laa-reusable-github-actions/.github/workflows/snyk-sca-scan.yml@<insert latest sha here>
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
     with:
       build_tool: maven
       working_directory: services/api
