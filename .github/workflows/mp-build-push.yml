@@ -57,12 +57,6 @@ jobs:
     environment: ${{ inputs.environment }}
 
     steps:
-    - name: Clean Actions Runner
-      id: clean_actions_runner
-      uses: ministryofjustice/action-clean-runner@390530713a326ddc099b2114f38dd0f2f8eac6da # <version>
-      with:
-        confirm: true
-        
     - name: Git Checkout
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 #--v7.0.1
 
