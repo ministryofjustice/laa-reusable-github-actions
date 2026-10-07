@@ -79,6 +79,26 @@ jobs:
         image_repo: ${{ inputs.image_repo }}
         image_tag: ${{ inputs.image_tag }}
 
+    - name: ECR Auth to CP
+      id: authcp
+      uses: $/.github/actions/ecr-auth
+      with:
+        ecr_region: ${{ vars.AWS_REGION }}
+        ecr_role: ${{ secrets.ECR_ROLE_TO_ASSUME }}
+        role-session-name: "github-cicd-${{ inputs.app_name }}-${{ github.run_number }}"
+        account_ids: ${{ secrets.CP_ECR_ACCOUNT_ID }}
+
+    - name: Publish image into CP ECR
+      id: publish-image to CP
+      if: ${{ inputs.app_name == 'ccms-oia' }}
+      run: |
+        docker tag ${{ steps.build.outputs.image_registry }}/${{ steps.build.outputs.image_repo }}:${{ steps.build.outputs.image_tag }} ${{ secrets.ECR_REGISTRY_URL }}/${{ vars.ECR_REPOSITORY }}:${{ format('{0}-{1}', vars.IMAGE_PREFIX, github.sha) }}
+        docker push  ${{ secrets.ECR_REGISTRY_URL }}/${{ vars.ECR_REPOSITORY }}:${{ format('{0}-{1}', vars.IMAGE_PREFIX, github.sha) }}
+        echo "published_image_version=${{ format('{0}-{1}', vars.IMAGE_PREFIX, github.sha) }}" >> $GITHUB_OUTPUT
+      shell: bash
+      env:
+        GIT_TOKEN: ${{ github.token }}
+
     - name: Output
       id: output
       run: |
