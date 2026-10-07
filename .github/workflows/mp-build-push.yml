@@ -89,7 +89,7 @@ jobs:
         account_ids: ${{ secrets.CP_ECR_ACCOUNT_ID }}
 
     - name: Publish image into CP ECR
-      id: publish-image to CP
+      id: publish-image
       if: ${{ inputs.app_name == 'ccms-oia' }}
       run: |
         docker tag ${{ steps.build.outputs.image_registry }}/${{ steps.build.outputs.image_repo }}:${{ steps.build.outputs.image_tag }} ${{ secrets.ECR_REGISTRY_URL }}/${{ vars.ECR_REPOSITORY }}:${{ format('{0}-{1}', vars.IMAGE_PREFIX, github.sha) }}
