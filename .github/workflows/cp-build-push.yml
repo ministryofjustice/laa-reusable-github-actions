@@ -99,7 +99,7 @@ jobs:
 
   scan:
     needs: build_push
-    uses: ministryofjustice/laa-reusable-github-actions/.github/workflows/sast.yml@0a7cbc9ed08d5ab503a21b24297b697797866dc14 # SHA for main as of 5 OCT 2026
+    uses: ministryofjustice/laa-reusable-github-actions/.github/workflows/sast.yml@a7cbc9ed08d5ab503a21b24297b697797866dc14 # SHA for main as of 5 OCT 2026
     with:
       image_uri: ${{ needs.build_push.outputs.image_uri }}
       dockerfile_path: ${{ inputs.dockerfile_path }}
