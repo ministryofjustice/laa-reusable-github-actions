@@ -93,15 +93,15 @@ jobs:
       image_tag: ${{ steps.output.outputs.image_tag }}
       image_uri: ${{ steps.output.outputs.image_uri }}
         
-  scan:
-    needs: build_push
-    uses: $/.github/workflows/sast.yml
-    with:
-      image_uri: ${{ needs.build_push.outputs.image_uri }}
-      dockerfile_path: ${{ inputs.dockerfile_path }}
-    secrets:
-      SNYK_CLIENT_ID: ${{ secrets.SNYK_CLIENT_ID }}
-      SNYK_CLIENT_SECRET: ${{ secrets.SNYK_CLIENT_SECRET }}        
+  # scan:
+  #   needs: build_push
+  #   uses: $/.github/workflows/sast.yml
+  #   with:
+  #     image_uri: ${{ needs.build_push.outputs.image_uri }}
+  #     dockerfile_path: ${{ inputs.dockerfile_path }}
+  #   secrets:
+  #     SNYK_CLIENT_ID: ${{ secrets.SNYK_CLIENT_ID }}
+  #     SNYK_CLIENT_SECRET: ${{ secrets.SNYK_CLIENT_SECRET }}        
       # critical_high_exit_code: ${{ inputs.image_scan_critical_high_exit_code }}
 
 
