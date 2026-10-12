@@ -110,10 +110,11 @@ jobs:
           client_secret: ${{ secrets.SNYK_CLIENT_SECRET }}
 
       - name: Install Snyk CLI
+        id: install-snyk
         uses: snyk/actions/setup@9adf32b1121593767fc3c057af55b55db032dc04
 
       - name: Scan dependencies using container runtime
-        if: ${{ env.INPUTS_IMAGE_URI != '' }}
+        if: ${{ !cancelled() && steps.install-snyk.outcome == 'success' && inputs.image_uri != '' }}
         env:
           SNYK_OAUTH_TOKEN: ${{ steps.auth.outputs.token }}
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
@@ -153,7 +154,7 @@ jobs:
           fi
 
       - name: Monitor current dependencies
-        if: ${{ env.INPUTS_IMAGE_URI != '' }}
+        if: ${{ !cancelled() && steps.install-snyk.outcome == 'success' && inputs.image_uri != '' }}
         env:
           SNYK_OAUTH_TOKEN: ${{ steps.auth.outputs.token }}
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
@@ -171,7 +172,7 @@ jobs:
             "${POLICY_ARGS[@]}"
 
       - name: Scan Infrastructure as Code files
-        if: hashFiles(inputs.iac_path)
+        if: ${{ !cancelled() && steps.install-snyk.outcome == 'success' && hashFiles(inputs.iac_path) != '' }}
         env:
           SNYK_OAUTH_TOKEN: ${{ steps.auth.outputs.token }}
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
@@ -183,6 +184,7 @@ jobs:
             --sarif-file-output=sarif/snyk-iac.sarif
 
       - name: Scan codebase
+        if: ${{ !cancelled() && steps.install-snyk.outcome == 'success' }}
         env:
           SNYK_OAUTH_TOKEN: ${{ steps.auth.outputs.token }}
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
