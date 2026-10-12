@@ -56,6 +56,7 @@ jobs:
       actions: read
     steps:
       - name: Checkout
+        id: checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -85,6 +86,7 @@ jobs:
 
       # Early exit if there's no container setup to scan
       - name: Check Dockerfile exists
+        id: check-dockerfile
         if: ${{ !cancelled() }}
         env:
           INPUTS_DOCKERFILE_PATH: ${{ inputs.dockerfile_path }}
@@ -95,6 +97,7 @@ jobs:
           fi
 
       - name: Configure AWS credentials for ECR access
+        id: ecr-auth
         if: ${{ !cancelled() && env.has_ecr_role == 'true' }}
         uses: ministryofjustice/laa-reusable-github-actions/.github/actions/ecr-auth@583a60502327d7b9b7701fdb11be9f7d096cf9f5 # SHA for main as of 12/06/2026
         with:
@@ -112,7 +115,7 @@ jobs:
 
       - name: Install Snyk CLI
         id: install-snyk
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && (env.has_token == 'true' || steps.auth.outcome == 'success') }}
         uses: snyk/actions/setup@9adf32b1121593767fc3c057af55b55db032dc04
 
       # snyk iac test can't parse raw Helm chart templates (they contain Go
@@ -133,7 +136,13 @@ jobs:
         env:
           INPUTS_IAC_PATH: ${{ inputs.iac_path }}
         run: |
-          mkdir -p rendered-iac
+          # Render/stage into a directory outside the checkout (e.g. iac_path
+          # could be "." the repo root) so staging never copies a directory
+          # into its own descendant.
+          RENDERED_IAC_DIR="${RUNNER_TEMP}/rendered-iac"
+          rm -rf "${RENDERED_IAC_DIR}"
+          mkdir -p "${RENDERED_IAC_DIR}"
+          echo "rendered_iac_dir=${RENDERED_IAC_DIR}" >> "$GITHUB_OUTPUT"
 
           if [ -f "${INPUTS_IAC_PATH}/Chart.yaml" ]; then
             shopt -s nullglob
@@ -142,31 +151,31 @@ jobs:
 
             if [ ${#values_files[@]} -eq 0 ]; then
               echo "No values*.yaml files found alongside Chart.yaml at ${INPUTS_IAC_PATH}, rendering with chart defaults"
-              if ! helm template "${INPUTS_IAC_PATH}" > "rendered-iac/default.yaml"; then
+              if ! helm template "${INPUTS_IAC_PATH}" > "${RENDERED_IAC_DIR}/default.yaml"; then
                 echo "::error::Failed to render Helm chart using its default values"
-                rm -f "rendered-iac/default.yaml"
+                rm -f "${RENDERED_IAC_DIR}/default.yaml"
                 exit 1
               fi
             else
               for values_file in "${values_files[@]}"; do
                 env_name="$(basename "${values_file}" .yaml)"
-                if ! helm template "${INPUTS_IAC_PATH}" -f "${values_file}" > "rendered-iac/${env_name}.yaml"; then
+                if ! helm template "${INPUTS_IAC_PATH}" -f "${values_file}" > "${RENDERED_IAC_DIR}/${env_name}.yaml"; then
                   echo "::error::Failed to render Helm chart using ${values_file}"
-                  rm -f "rendered-iac/${env_name}.yaml"
+                  rm -f "${RENDERED_IAC_DIR}/${env_name}.yaml"
                   exit 1
                 fi
               done
             fi
           elif [ -d "${INPUTS_IAC_PATH}" ]; then
             echo "No Chart.yaml found at ${INPUTS_IAC_PATH}, scanning raw directory as-is"
-            cp -r "${INPUTS_IAC_PATH}/." rendered-iac/
+            cp -r "${INPUTS_IAC_PATH}/." "${RENDERED_IAC_DIR}/"
           else
             echo "${INPUTS_IAC_PATH} is a single file, scanning as-is"
-            cp "${INPUTS_IAC_PATH}" rendered-iac/
+            cp "${INPUTS_IAC_PATH}" "${RENDERED_IAC_DIR}/"
           fi
 
       - name: Scan dependencies using container runtime
-        if: ${{ !cancelled() && steps.install-snyk.outcome == 'success' && inputs.image_uri != '' }}
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' && steps.check-dockerfile.outcome == 'success' && (env.has_ecr_role != 'true' || steps.ecr-auth.outcome == 'success') && steps.install-snyk.outcome == 'success' && inputs.image_uri != '' }}
         env:
           SNYK_OAUTH_TOKEN: ${{ steps.auth.outputs.token }}
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
@@ -206,7 +215,7 @@ jobs:
           fi
 
       - name: Monitor current dependencies
-        if: ${{ !cancelled() && steps.install-snyk.outcome == 'success' && inputs.image_uri != '' }}
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' && steps.check-dockerfile.outcome == 'success' && (env.has_ecr_role != 'true' || steps.ecr-auth.outcome == 'success') && steps.install-snyk.outcome == 'success' && inputs.image_uri != '' }}
         env:
           SNYK_OAUTH_TOKEN: ${{ steps.auth.outputs.token }}
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
@@ -229,8 +238,10 @@ jobs:
           SNYK_OAUTH_TOKEN: ${{ steps.auth.outputs.token }}
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
           MINIMUM_THRESHOLD: ${{ inputs.minimum_threshold }}
+          RENDERED_IAC_DIR: ${{ steps.render-iac.outputs.rendered_iac_dir }}
         run: |
-          snyk iac test rendered-iac \
+          mkdir -p sarif
+          snyk iac test "${RENDERED_IAC_DIR}" \
             --severity-threshold=${MINIMUM_THRESHOLD} \
             --sarif-file-output=sarif/snyk-iac.sarif
 
