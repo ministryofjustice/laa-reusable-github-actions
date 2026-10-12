@@ -85,6 +85,7 @@ jobs:
 
       # Early exit if there's no container setup to scan
       - name: Check Dockerfile exists
+        if: ${{ !cancelled() }}
         env:
           INPUTS_DOCKERFILE_PATH: ${{ inputs.dockerfile_path }}
         run: |
@@ -94,7 +95,7 @@ jobs:
           fi
 
       - name: Configure AWS credentials for ECR access
-        if: ${{ env.has_ecr_role == 'true' }}
+        if: ${{ !cancelled() && env.has_ecr_role == 'true' }}
         uses: ministryofjustice/laa-reusable-github-actions/.github/actions/ecr-auth@583a60502327d7b9b7701fdb11be9f7d096cf9f5 # SHA for main as of 12/06/2026
         with:
           ecr_role: ${{ secrets.ECR_ROLE_TO_ASSUME }}
@@ -104,13 +105,14 @@ jobs:
       - name: Obtain Short-lived token
         id: auth
         uses: ministryofjustice/laa-reusable-github-actions/.github/actions/snyk-auth@6db001458db30ae747d9eb8eb25707ce52b359bc
-        if: ${{ env.has_token == 'false' }}
+        if: ${{ !cancelled() && env.has_token == 'false' }}
         with:
           client_id: ${{ secrets.SNYK_CLIENT_ID }}
           client_secret: ${{ secrets.SNYK_CLIENT_SECRET }}
 
       - name: Install Snyk CLI
         id: install-snyk
+        if: ${{ !cancelled() }}
         uses: snyk/actions/setup@9adf32b1121593767fc3c057af55b55db032dc04
 
       # snyk iac test can't parse raw Helm chart templates (they contain Go
