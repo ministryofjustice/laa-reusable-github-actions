@@ -157,9 +157,12 @@ jobs:
                 fi
               done
             fi
-          else
-            echo "No Chart.yaml found at ${INPUTS_IAC_PATH}, scanning raw files as-is"
+          elif [ -d "${INPUTS_IAC_PATH}" ]; then
+            echo "No Chart.yaml found at ${INPUTS_IAC_PATH}, scanning raw directory as-is"
             cp -r "${INPUTS_IAC_PATH}/." rendered-iac/
+          else
+            echo "${INPUTS_IAC_PATH} is a single file, scanning as-is"
+            cp "${INPUTS_IAC_PATH}" rendered-iac/
           fi
 
       - name: Scan dependencies using container runtime
