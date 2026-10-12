@@ -43,7 +43,7 @@ on:
 
 jobs:
   sca-scan:
-    name: Scan dependencies with Snyk
+    name: Snyk SCA scan
     runs-on: ubuntu-latest
     permissions:
       contents: read
