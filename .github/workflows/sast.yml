@@ -63,6 +63,7 @@ jobs:
 
       # Secrets can't be used in if-checks so we have to define a global flag to verify
       - name: Check if we have tokens defined
+        id: check-tokens
         env:
           INPUTS_IMAGE_URI: ${{ inputs.image_uri }}
         run: |
@@ -178,7 +179,7 @@ jobs:
           fi
 
       - name: Scan dependencies using container runtime
-        if: ${{ !cancelled() && steps.checkout.outcome == 'success' && steps.check-dockerfile.outcome == 'success' && (env.has_ecr_role != 'true' || steps.ecr-auth.outcome == 'success') && steps.install-snyk.outcome == 'success' && inputs.image_uri != '' }}
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' && steps.check-tokens.outcome == 'success' && steps.check-dockerfile.outcome == 'success' && steps.ecr-auth.outcome == 'success' && steps.install-snyk.outcome == 'success' && inputs.image_uri != '' }}
         env:
           SNYK_OAUTH_TOKEN: ${{ steps.auth.outputs.token }}
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
@@ -218,7 +219,7 @@ jobs:
           fi
 
       - name: Monitor current dependencies
-        if: ${{ !cancelled() && steps.checkout.outcome == 'success' && steps.check-dockerfile.outcome == 'success' && (env.has_ecr_role != 'true' || steps.ecr-auth.outcome == 'success') && steps.install-snyk.outcome == 'success' && inputs.image_uri != '' }}
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' && steps.check-tokens.outcome == 'success' && steps.check-dockerfile.outcome == 'success' && steps.ecr-auth.outcome == 'success' && steps.install-snyk.outcome == 'success' && inputs.image_uri != '' }}
         env:
           SNYK_OAUTH_TOKEN: ${{ steps.auth.outputs.token }}
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
