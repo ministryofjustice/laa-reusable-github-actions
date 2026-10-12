@@ -130,18 +130,26 @@ jobs:
               ;;
           esac
 
+          POLICY_ARGS=()
+
+          if [ -f ".snyk" ]; then
+            POLICY_ARGS+=(--policy-path=".snyk")
+          fi
+
           mkdir -p sarif
           if [ "${INPUTS_EXCLUDE_BASE_IMAGE_VULNS}" = "true" ]; then
             snyk container test "${INPUTS_IMAGE_URI}" \
               --severity-threshold="${MINIMUM_THRESHOLD}" \
               --sarif-file-output="sarif/snyk.sarif" \
               --file="${INPUTS_DOCKERFILE_PATH}" \
+              "${POLICY_ARGS[@]}" \
               --exclude-base-image-vulns
           else
             snyk container test "${INPUTS_IMAGE_URI}" \
               --severity-threshold="${MINIMUM_THRESHOLD}" \
               --sarif-file-output="sarif/snyk.sarif" \
-              --file="${INPUTS_DOCKERFILE_PATH}"
+              --file="${INPUTS_DOCKERFILE_PATH}" \
+              "${POLICY_ARGS[@]}"
           fi
 
       - name: Monitor current dependencies
@@ -152,8 +160,15 @@ jobs:
           INPUTS_IMAGE_URI: ${{ inputs.image_uri }}
           INPUTS_DOCKERFILE_PATH: ${{ inputs.dockerfile_path }}
         run: |
+          POLICY_ARGS=()
+
+          if [ -f ".snyk" ]; then
+            POLICY_ARGS+=(--policy-path=".snyk")
+          fi
+
           snyk container monitor ${INPUTS_IMAGE_URI} \
-            --file=${INPUTS_DOCKERFILE_PATH}
+            --file=${INPUTS_DOCKERFILE_PATH} \
+            "${POLICY_ARGS[@]}"
 
       - name: Scan Infrastructure as Code files
         if: hashFiles(inputs.iac_path)
