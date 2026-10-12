@@ -136,15 +136,15 @@ jobs:
         env:
           INPUTS_IAC_PATH: ${{ inputs.iac_path }}
         run: |
-          # Render/stage into a directory outside the checkout (e.g. iac_path
-          # could be "." the repo root) so staging never copies a directory
-          # into its own descendant.
-          RENDERED_IAC_DIR="${RUNNER_TEMP}/rendered-iac"
-          rm -rf "${RENDERED_IAC_DIR}"
-          mkdir -p "${RENDERED_IAC_DIR}"
-          echo "rendered_iac_dir=${RENDERED_IAC_DIR}" >> "$GITHUB_OUTPUT"
-
           if [ -f "${INPUTS_IAC_PATH}/Chart.yaml" ]; then
+            # Rendered manifests are synthetic (templated), not checked-in
+            # files, so staging them outside the checkout (e.g. iac_path
+            # could be "." the repo root) is safe and avoids a directory
+            # copying into its own descendant.
+            RENDERED_IAC_DIR="${RUNNER_TEMP}/rendered-iac"
+            rm -rf "${RENDERED_IAC_DIR}"
+            mkdir -p "${RENDERED_IAC_DIR}"
+
             shopt -s nullglob
             values_files=("${INPUTS_IAC_PATH}"/values*.yaml)
             shopt -u nullglob
@@ -166,12 +166,15 @@ jobs:
                 fi
               done
             fi
-          elif [ -d "${INPUTS_IAC_PATH}" ]; then
-            echo "No Chart.yaml found at ${INPUTS_IAC_PATH}, scanning raw directory as-is"
-            cp -r "${INPUTS_IAC_PATH}/." "${RENDERED_IAC_DIR}/"
+
+            echo "rendered_iac_dir=${RENDERED_IAC_DIR}" >> "$GITHUB_OUTPUT"
           else
-            echo "${INPUTS_IAC_PATH} is a single file, scanning as-is"
-            cp "${INPUTS_IAC_PATH}" "${RENDERED_IAC_DIR}/"
+            # Plain (non-Helm) IaC inputs are scanned as-is, unchanged from
+            # previous behaviour. Scan the original path directly rather than
+            # a copy, so Snyk's SARIF output keeps file locations relative to
+            # the checkout and GitHub can match alerts back to committed files.
+            echo "No Chart.yaml found at ${INPUTS_IAC_PATH}, scanning original path as-is"
+            echo "rendered_iac_dir=${INPUTS_IAC_PATH}" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Scan dependencies using container runtime
