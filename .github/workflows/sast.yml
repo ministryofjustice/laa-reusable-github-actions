@@ -122,12 +122,12 @@ jobs:
       # the CLI, see: https://docs.snyk.io/developer-tools/snyk-cli/scan-and-maintain-projects-using-the-cli/snyk-cli-for-iac/test-your-iac-files/helm-charts
       - name: Set up Helm
         id: setup-helm
-        if: ${{ !cancelled() && inputs.iac_path != '' }}
+        if: ${{ !cancelled() && inputs.iac_path != '' && hashFiles(format('{0}/Chart.yaml', inputs.iac_path)) != '' }}
         uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5
 
       - name: Render Helm charts for IaC scanning
         id: render-iac
-        if: ${{ !cancelled() && steps.setup-helm.outcome == 'success' && inputs.iac_path != '' }}
+        if: ${{ !cancelled() && inputs.iac_path != '' && steps.setup-helm.outcome != 'failure' }}
         env:
           INPUTS_IAC_PATH: ${{ inputs.iac_path }}
         run: |
@@ -139,18 +139,22 @@ jobs:
             shopt -u nullglob
 
             if [ ${#values_files[@]} -eq 0 ]; then
-              echo "::error::Chart.yaml found at ${INPUTS_IAC_PATH} but no values*.yaml files were found alongside it"
-              exit 1
-            fi
-
-            for values_file in "${values_files[@]}"; do
-              env_name="$(basename "${values_file}" .yaml)"
-              if ! helm template "${INPUTS_IAC_PATH}" -f "${values_file}" > "rendered-iac/${env_name}.yaml"; then
-                echo "::error::Failed to render Helm chart using ${values_file}"
-                rm -f "rendered-iac/${env_name}.yaml"
+              echo "No values*.yaml files found alongside Chart.yaml at ${INPUTS_IAC_PATH}, rendering with chart defaults"
+              if ! helm template "${INPUTS_IAC_PATH}" > "rendered-iac/default.yaml"; then
+                echo "::error::Failed to render Helm chart using its default values"
+                rm -f "rendered-iac/default.yaml"
                 exit 1
               fi
-            done
+            else
+              for values_file in "${values_files[@]}"; do
+                env_name="$(basename "${values_file}" .yaml)"
+                if ! helm template "${INPUTS_IAC_PATH}" -f "${values_file}" > "rendered-iac/${env_name}.yaml"; then
+                  echo "::error::Failed to render Helm chart using ${values_file}"
+                  rm -f "rendered-iac/${env_name}.yaml"
+                  exit 1
+                fi
+              done
+            fi
           else
             echo "No Chart.yaml found at ${INPUTS_IAC_PATH}, scanning raw files as-is"
             cp -r "${INPUTS_IAC_PATH}/." rendered-iac/
