@@ -120,6 +120,21 @@ measure against the conditions defined by the global Snyk policy. This
 will change and improve over time, but is ultimately dictated by how
 effective that is.
 
+If `iac_path` points at a Helm chart (i.e. it contains a `Chart.yaml`),
+the workflow renders it with `helm template` for every `values*.yaml`
+file found alongside the chart, and scans the rendered output instead
+of the raw templates. This is because raw Helm templates contain Go
+templating syntax (e.g. `{{ .Values.foo }}`), which isn't valid YAML
+and can't be parsed by `snyk iac test` directly. If `iac_path` doesn't
+contain a `Chart.yaml`, it's assumed to be plain IaC files and is
+scanned as-is.
+
+This is Snyk's own documented approach for scanning Helm charts with
+the CLI (render with `helm template`, then run `snyk iac test` against
+the output) — see [Helm charts](https://docs.snyk.io/developer-tools/snyk-cli/scan-and-maintain-projects-using-the-cli/snyk-cli-for-iac/test-your-iac-files/helm-charts)
+and [Scan and fix security issues in Helm Charts](https://docs.snyk.io/scan-fix-and-prevent/scan-with-snyk/snyk-iac/scan-your-iac-source-code/scan-kubernetes-configuration-files/scan-and-fix-security-issues-in-helm-charts-current-iac)
+in the Snyk docs.
+
 ### Static Analysis
 
 **Always enabled**

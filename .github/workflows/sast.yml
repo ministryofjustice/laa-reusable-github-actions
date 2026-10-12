@@ -113,6 +113,49 @@ jobs:
         id: install-snyk
         uses: snyk/actions/setup@9adf32b1121593767fc3c057af55b55db032dc04
 
+      # snyk iac test can't parse raw Helm chart templates (they contain Go
+      # templating syntax, not valid YAML). If iac_path looks like a Helm
+      # chart (has a Chart.yaml), render it for every values*.yaml found
+      # alongside it before scanning. Plain IaC paths (no Chart.yaml) are
+      # scanned as-is, unchanged from previous behaviour.
+      # This is Snyk's own documented approach for scanning Helm charts via
+      # the CLI, see: https://docs.snyk.io/developer-tools/snyk-cli/scan-and-maintain-projects-using-the-cli/snyk-cli-for-iac/test-your-iac-files/helm-charts
+      - name: Set up Helm
+        id: setup-helm
+        if: ${{ !cancelled() && inputs.iac_path != '' }}
+        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5
+
+      - name: Render Helm charts for IaC scanning
+        id: render-iac
+        if: ${{ !cancelled() && steps.setup-helm.outcome == 'success' && inputs.iac_path != '' }}
+        env:
+          INPUTS_IAC_PATH: ${{ inputs.iac_path }}
+        run: |
+          mkdir -p rendered-iac
+
+          if [ -f "${INPUTS_IAC_PATH}/Chart.yaml" ]; then
+            shopt -s nullglob
+            values_files=("${INPUTS_IAC_PATH}"/values*.yaml)
+            shopt -u nullglob
+
+            if [ ${#values_files[@]} -eq 0 ]; then
+              echo "::error::Chart.yaml found at ${INPUTS_IAC_PATH} but no values*.yaml files were found alongside it"
+              exit 1
+            fi
+
+            for values_file in "${values_files[@]}"; do
+              env_name="$(basename "${values_file}" .yaml)"
+              if ! helm template "${INPUTS_IAC_PATH}" -f "${values_file}" > "rendered-iac/${env_name}.yaml"; then
+                echo "::error::Failed to render Helm chart using ${values_file}"
+                rm -f "rendered-iac/${env_name}.yaml"
+                exit 1
+              fi
+            done
+          else
+            echo "No Chart.yaml found at ${INPUTS_IAC_PATH}, scanning raw files as-is"
+            cp -r "${INPUTS_IAC_PATH}/." rendered-iac/
+          fi
+
       - name: Scan dependencies using container runtime
         if: ${{ !cancelled() && steps.install-snyk.outcome == 'success' && inputs.image_uri != '' }}
         env:
@@ -172,14 +215,13 @@ jobs:
             "${POLICY_ARGS[@]}"
 
       - name: Scan Infrastructure as Code files
-        if: ${{ !cancelled() && steps.install-snyk.outcome == 'success' && hashFiles(inputs.iac_path) != '' }}
+        if: ${{ !cancelled() && steps.install-snyk.outcome == 'success' && steps.render-iac.outcome == 'success' && inputs.iac_path != '' }}
         env:
           SNYK_OAUTH_TOKEN: ${{ steps.auth.outputs.token }}
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
           MINIMUM_THRESHOLD: ${{ inputs.minimum_threshold }}
-          INPUTS_IAC_PATH: ${{ inputs.iac_path }}
         run: |
-          snyk iac test ${INPUTS_IAC_PATH} \
+          snyk iac test rendered-iac \
             --severity-threshold=${MINIMUM_THRESHOLD} \
             --sarif-file-output=sarif/snyk-iac.sarif
 
