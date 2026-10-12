@@ -138,11 +138,13 @@ jobs:
           INPUTS_IAC_PATH: ${{ inputs.iac_path }}
         run: |
           if [ -f "${INPUTS_IAC_PATH}/Chart.yaml" ]; then
-            # Rendered manifests are synthetic (templated), not checked-in
-            # files, so staging them outside the checkout (e.g. iac_path
-            # could be "." the repo root) is safe and avoids a directory
-            # copying into its own descendant.
-            RENDERED_IAC_DIR="${RUNNER_TEMP}/rendered-iac"
+            # Render under the checkout (not RUNNER_TEMP) so Snyk's SARIF
+            # artifactLocation.uri values stay repository-relative; an
+            # out-of-repo path can't be mapped by GitHub code scanning and
+            # may be rejected on upload. This is safe even when iac_path is
+            # "." (the repo root): we only ever write templated output here,
+            # never copy the chart source into itself.
+            RENDERED_IAC_DIR="${GITHUB_WORKSPACE}/rendered-iac"
             rm -rf "${RENDERED_IAC_DIR}"
             mkdir -p "${RENDERED_IAC_DIR}"
 
