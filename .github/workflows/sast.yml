@@ -56,12 +56,14 @@ jobs:
       actions: read
     steps:
       - name: Checkout
+        id: checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
       # Secrets can't be used in if-checks so we have to define a global flag to verify
       - name: Check if we have tokens defined
+        id: check-tokens
         env:
           INPUTS_IMAGE_URI: ${{ inputs.image_uri }}
         run: |
@@ -85,6 +87,8 @@ jobs:
 
       # Early exit if there's no container setup to scan
       - name: Check Dockerfile exists
+        id: check-dockerfile
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' && inputs.image_uri != '' }}
         env:
           INPUTS_DOCKERFILE_PATH: ${{ inputs.dockerfile_path }}
         run: |
@@ -94,7 +98,8 @@ jobs:
           fi
 
       - name: Configure AWS credentials for ECR access
-        if: ${{ env.has_ecr_role == 'true' }}
+        id: ecr-auth
+        if: ${{ !cancelled() && env.has_ecr_role == 'true' }}
         uses: ministryofjustice/laa-reusable-github-actions/.github/actions/ecr-auth@583a60502327d7b9b7701fdb11be9f7d096cf9f5 # SHA for main as of 12/06/2026
         with:
           ecr_role: ${{ secrets.ECR_ROLE_TO_ASSUME }}
@@ -104,16 +109,78 @@ jobs:
       - name: Obtain Short-lived token
         id: auth
         uses: ministryofjustice/laa-reusable-github-actions/.github/actions/snyk-auth@6db001458db30ae747d9eb8eb25707ce52b359bc
-        if: ${{ env.has_token == 'false' }}
+        if: ${{ !cancelled() && env.has_token == 'false' && env.has_oauth == 'true' }}
         with:
           client_id: ${{ secrets.SNYK_CLIENT_ID }}
           client_secret: ${{ secrets.SNYK_CLIENT_SECRET }}
 
       - name: Install Snyk CLI
+        id: install-snyk
+        if: ${{ !cancelled() && (env.has_token == 'true' || steps.auth.outcome == 'success') }}
         uses: snyk/actions/setup@9adf32b1121593767fc3c057af55b55db032dc04
 
+      # snyk iac test can't parse raw Helm chart templates (they contain Go
+      # templating syntax, not valid YAML). If iac_path looks like a Helm
+      # chart (has a Chart.yaml), render it for every values*.yaml found
+      # alongside it before scanning. Plain IaC paths (no Chart.yaml) are
+      # scanned as-is, unchanged from previous behaviour.
+      # This is Snyk's own documented approach for scanning Helm charts via
+      # the CLI, see: https://docs.snyk.io/developer-tools/snyk-cli/scan-and-maintain-projects-using-the-cli/snyk-cli-for-iac/test-your-iac-files/helm-charts
+      - name: Set up Helm
+        id: setup-helm
+        if: ${{ !cancelled() && inputs.iac_path != '' && hashFiles(format('{0}/Chart.yaml', inputs.iac_path)) != '' }}
+        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5
+
+      - name: Render Helm charts for IaC scanning
+        id: render-iac
+        if: ${{ !cancelled() && inputs.iac_path != '' && steps.setup-helm.outcome != 'failure' }}
+        env:
+          INPUTS_IAC_PATH: ${{ inputs.iac_path }}
+        run: |
+          if [ -f "${INPUTS_IAC_PATH}/Chart.yaml" ]; then
+            # Fixed path under the checkout for stable SARIF locations; fail
+            # instead of deleting if it already exists
+            RENDERED_IAC_DIR="${GITHUB_WORKSPACE}/.snyk-rendered-iac"
+            if [ -e "${RENDERED_IAC_DIR}" ]; then
+              echo "::error::${RENDERED_IAC_DIR} already exists in the checkout; rename or remove it so it doesn't collide with this workflow's reserved rendering directory"
+              exit 1
+            fi
+            mkdir -p "${RENDERED_IAC_DIR}"
+
+            shopt -s nullglob
+            values_files=("${INPUTS_IAC_PATH}"/values*.yaml)
+            shopt -u nullglob
+
+            if [ ${#values_files[@]} -eq 0 ]; then
+              echo "No values*.yaml files found alongside Chart.yaml at ${INPUTS_IAC_PATH}, rendering with chart defaults"
+              if ! helm template "${INPUTS_IAC_PATH}" > "${RENDERED_IAC_DIR}/default.yaml"; then
+                echo "::error::Failed to render Helm chart using its default values"
+                rm -f "${RENDERED_IAC_DIR}/default.yaml"
+                exit 1
+              fi
+            else
+              for values_file in "${values_files[@]}"; do
+                env_name="$(basename "${values_file}" .yaml)"
+                if ! helm template "${INPUTS_IAC_PATH}" -f "${values_file}" > "${RENDERED_IAC_DIR}/${env_name}.yaml"; then
+                  echo "::error::Failed to render Helm chart using ${values_file}"
+                  rm -f "${RENDERED_IAC_DIR}/${env_name}.yaml"
+                  exit 1
+                fi
+              done
+            fi
+
+            echo "rendered_iac_dir=${RENDERED_IAC_DIR}" >> "$GITHUB_OUTPUT"
+          else
+            # Plain (non-Helm) IaC inputs are scanned as-is, unchanged from
+            # previous behaviour. Scan the original path directly rather than
+            # a copy, so Snyk's SARIF output keeps file locations relative to
+            # the checkout and GitHub can match alerts back to committed files.
+            echo "No Chart.yaml found at ${INPUTS_IAC_PATH}, scanning original path as-is"
+            echo "rendered_iac_dir=${INPUTS_IAC_PATH}" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Scan dependencies using container runtime
-        if: ${{ env.INPUTS_IMAGE_URI != '' }}
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' && steps.check-tokens.outcome == 'success' && steps.check-dockerfile.outcome == 'success' && steps.ecr-auth.outcome == 'success' && steps.install-snyk.outcome == 'success' && inputs.image_uri != '' }}
         env:
           SNYK_OAUTH_TOKEN: ${{ steps.auth.outputs.token }}
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
@@ -153,7 +220,7 @@ jobs:
           fi
 
       - name: Monitor current dependencies
-        if: ${{ env.INPUTS_IMAGE_URI != '' }}
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' && steps.check-tokens.outcome == 'success' && steps.check-dockerfile.outcome == 'success' && steps.ecr-auth.outcome == 'success' && steps.install-snyk.outcome == 'success' && inputs.image_uri != '' }}
         env:
           SNYK_OAUTH_TOKEN: ${{ steps.auth.outputs.token }}
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
@@ -171,18 +238,20 @@ jobs:
             "${POLICY_ARGS[@]}"
 
       - name: Scan Infrastructure as Code files
-        if: hashFiles(inputs.iac_path)
+        if: ${{ !cancelled() && steps.install-snyk.outcome == 'success' && steps.render-iac.outcome == 'success' && inputs.iac_path != '' }}
         env:
           SNYK_OAUTH_TOKEN: ${{ steps.auth.outputs.token }}
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
           MINIMUM_THRESHOLD: ${{ inputs.minimum_threshold }}
-          INPUTS_IAC_PATH: ${{ inputs.iac_path }}
+          RENDERED_IAC_DIR: ${{ steps.render-iac.outputs.rendered_iac_dir }}
         run: |
-          snyk iac test ${INPUTS_IAC_PATH} \
+          mkdir -p sarif
+          snyk iac test "${RENDERED_IAC_DIR}" \
             --severity-threshold=${MINIMUM_THRESHOLD} \
             --sarif-file-output=sarif/snyk-iac.sarif
 
       - name: Scan codebase
+        if: ${{ !cancelled() && steps.install-snyk.outcome == 'success' }}
         env:
           SNYK_OAUTH_TOKEN: ${{ steps.auth.outputs.token }}
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
