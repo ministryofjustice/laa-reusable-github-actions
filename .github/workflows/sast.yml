@@ -138,14 +138,14 @@ jobs:
           INPUTS_IAC_PATH: ${{ inputs.iac_path }}
         run: |
           if [ -f "${INPUTS_IAC_PATH}/Chart.yaml" ]; then
-            # Render under the checkout (not RUNNER_TEMP) so Snyk's SARIF
-            # artifactLocation.uri values stay repository-relative; an
-            # out-of-repo path can't be mapped by GitHub code scanning and
-            # may be rejected on upload. Use a unique, randomly-named
-            # directory (not a fixed "rendered-iac") so we never clobber a
-            # caller-owned path that happens to share the name, including
-            # the chart itself if iac_path were ever "rendered-iac".
-            RENDERED_IAC_DIR="$(mktemp -d "${GITHUB_WORKSPACE}/.snyk-rendered-iac.XXXXXX")"
+            # Fixed path under the checkout for stable SARIF locations; fail
+            # instead of deleting if it already exists
+            RENDERED_IAC_DIR="${GITHUB_WORKSPACE}/.snyk-rendered-iac"
+            if [ -e "${RENDERED_IAC_DIR}" ]; then
+              echo "::error::${RENDERED_IAC_DIR} already exists in the checkout; rename or remove it so it doesn't collide with this workflow's reserved rendering directory"
+              exit 1
+            fi
+            mkdir -p "${RENDERED_IAC_DIR}"
 
             shopt -s nullglob
             values_files=("${INPUTS_IAC_PATH}"/values*.yaml)
