@@ -4,7 +4,11 @@ Following the publication of [this article](https://docs.github.com/en/actions/l
 
 ## Notices
 
-This is a beta function from Github and my be changed/break at very short notice
+This is a beta function from Github and may be changed/break at very short notice
+
+## Approvals Process
+
+When raising a Pull Request against this repository, you will need an approval from laa-sre-admin and at least one additional reviewer
 
 ## Currently available workflows
 
