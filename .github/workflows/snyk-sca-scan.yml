@@ -111,7 +111,7 @@ jobs:
       - name: Set up Java
         uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
-          distribution: temurin
+          distribution: corretto
           java-version: ${{ inputs.java_version }}
 
       - name: Install Snyk CLI
