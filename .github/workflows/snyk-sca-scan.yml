@@ -38,6 +38,11 @@ on:
         required: false
         default: "17"
         type: string
+      java_distribution:
+        description: "Java distribution used by actions/setup-java (e.g. corretto, temurin)."
+        required: false
+        default: "corretto"
+        type: string
     secrets:
       SNYK_TOKEN:
         required: false
@@ -111,7 +116,7 @@ jobs:
       - name: Set up Java
         uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
-          distribution: corretto
+          distribution: ${{ inputs.java_distribution }}
           java-version: ${{ inputs.java_version }}
 
       - name: Install Snyk CLI
