@@ -11,7 +11,7 @@ on:
       SNYK_CLIENT_SECRET:
         description: "Snyk Client Secret of the Snyk Service Account"
         required: true
-      DEV_ECR_ROLE_TO_ASSUME:
+      ECR_ROLE_TO_ASSUME:
         description: "IAM role to assume for pushing images to ECR"
         required: true
       KUBE_CLUSTER:
