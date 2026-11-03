@@ -5,7 +5,7 @@ permissions: {}
 on:
   workflow_call:
     secrets:
-      SNYK_CLINET_ID:
+      SNYK_CLIENT_ID:
         description: "Snyk Client ID of the Snyk Service Account"
         required: true
       SNYK_CLIENT_SECRET:
