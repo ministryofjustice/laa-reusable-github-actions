@@ -1,7 +1,16 @@
 name: CP - Build image, push to ECR, scan for vulns and deploy to Cloud Platform
 
+permissions: {}
+
 on:
   workflow_call:
+    secrets:
+      SNYK_CLINET_ID:
+        description: "Snyk Client ID of the Snyk Service Account"
+        required: true
+      SNYK_CLIENT_SECRET:
+        description: "Snyk Client Secret of the Snyk Service Account"
+        required: true
     inputs:
       environment:
         description: "Deployment Environment"
