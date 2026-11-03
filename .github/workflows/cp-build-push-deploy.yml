@@ -79,6 +79,8 @@ jobs:
     permissions:
       contents: read
       id-token: write
+      actions: read
+      security-events: write
     with:
       environment: ${{ inputs.environment }}
       dockerfile_path: ${{ inputs.dockerfile_path }}
