@@ -76,6 +76,9 @@ on:
 jobs:
   build_and_push:
     uses: ministryofjustice/laa-reusable-github-actions/.github/workflows/cp-build-push.yml@0cb7eb8ab4bf643986ab36ecf3ffcdffa9b55214 # SHA for main as of 3 JUN 2026
+    permissions:
+      contents: read
+      id-token: write
     with:
       environment: ${{ inputs.environment }}
       dockerfile_path: ${{ inputs.dockerfile_path }}
