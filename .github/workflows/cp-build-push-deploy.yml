@@ -75,7 +75,7 @@ on:
 
 jobs:
   build_and_push:
-    uses: ministryofjustice/laa-reusable-github-actions/.github/workflows/cp-build-push.yml@0cb7eb8ab4bf643986ab36ecf3ffcdffa9b55214 # SHA for main as of 3 JUN 2026
+    uses: $/.github/workflows/cp-build-push.yml
     permissions:
       contents: read
       id-token: write
@@ -90,11 +90,11 @@ jobs:
     secrets:
       SNYK_CLIENT_ID: ${{ secrets.SNYK_CLIENT_ID }}
       SNYK_CLIENT_SECRET: ${{ secrets.SNYK_CLIENT_SECRET }}
-      ECR_ROLE_TO_ASSUME: ${{ secrets.DEV_ECR_ROLE_TO_ASSUME }}
+      ECR_ROLE_TO_ASSUME: ${{ secrets.ECR_ROLE_TO_ASSUME }}
 
   helm_deploy:
     needs: build_and_push
-    uses: ministryofjustice/laa-reusable-github-actions/.github/workflows/cp-deploy.yml@0cb7eb8ab4bf643986ab36ecf3ffcdffa9b55214 # SHA for main as of 3 JUN 2026
+    uses: $/.github/workflows/cp-deploy.yml
     permissions:
       contents: read
       id-token: write
