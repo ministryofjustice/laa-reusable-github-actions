@@ -73,9 +73,11 @@ jobs:
         id: auth
         uses: ministryofjustice/laa-reusable-github-actions/.github/actions/ecr-auth@583a60502327d7b9b7701fdb11be9f7d096cf9f5 # SHA for main as of 12/06/2026
         with:
-          ecr_region: ${{ vars.ECR_REGION ?? inputs.ECR_REGION }}
+          ecr_region: ${{ vars.ECR_REGION ?? $ECR_REGION }}
           ecr_role: ${{ secrets.ECR_ROLE_TO_ASSUME }}
           role-session-name: "github-cicd-${{ inputs.app_name }}-${{ github.run_number }}"
+        env:
+          ECR_REGION: ${{ inputs.ECR_REGION }}
 
       - name: Build and Push
         id: build
