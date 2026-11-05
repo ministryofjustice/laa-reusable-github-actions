@@ -71,7 +71,7 @@ jobs:
 
       - name: ECR Auth
         id: auth
-        uses: .github/actions/ecr-auth
+        uses: $/.github/actions/ecr-auth
         with:
           ecr_region: ${{ inputs.ECR_REGION }}
           ecr_role: ${{ secrets.ECR_ROLE_TO_ASSUME }}
