@@ -29,7 +29,7 @@ runs:
       uses: aws-actions/configure-aws-credentials@e7f100cf4c008499ea8adda475de1042d6975c7b # v6.2.0
       with:
         role-to-assume: ${{ inputs.ecr_role }}
-        aws-region: "eu-west-2"
+        aws-region: ${{ inputs.ecr_region }}
         role-session-name: ${{ inputs.role-session-name }}
 
     - name: ECR Login
