@@ -79,7 +79,7 @@ jobs:
         id: auth
         uses: ministryofjustice/laa-reusable-github-actions/.github/actions/ecr-auth@add-snyk-secrets-to-cp-build-and-deploy
         with:
-          ecr_region: ${{ vars.ECR_REGION ?? inputs.ECR_REGION }}
+          ecr_region: ${{ inputs.ECR_REGION }}
           ecr_role: ${{ secrets.ECR_ROLE_TO_ASSUME }}
           role-session-name: "github-cicd-${{ inputs.app_name }}-${{ github.run_number }}"
 
@@ -89,7 +89,7 @@ jobs:
         with:
           dockerfile_path: ${{ inputs.dockerfile_path }}
           image_registry: ${{ steps.auth.outputs.image_registry }}
-          image_repo: ${{ vars.ECR_REPOSITORY ?? inputs.ECR_REPOSITORY }}
+          image_repo: ${{ inputs.ECR_REPOSITORY }}
           image_tag: ${{ inputs.image_tag }}
           additional_image_tags: ${{ inputs.additional_image_tags }}
           dockerfile_requires_git: ${{ inputs.dockerfile_requires_git }}
