@@ -69,7 +69,7 @@ jobs:
 
     - name: Kube Authentication
       id: auth
-      uses: ./.github/actions/authenticate_to_cluster
+      uses: $/.github/actions/authenticate_to_cluster
       with:
         kube-cluster: ${{ secrets.KUBE_CLUSTER }}
         kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
@@ -79,7 +79,7 @@ jobs:
 
     - name: Helm Deploy
       id: deploy
-      uses: ./.github/actions/helm-deploy
+      uses: $/.github/actions/helm-deploy
       with:
         k8s_namespace: ${{ secrets.KUBE_NAMESPACE }}
         helm_release_name: ${{ inputs.helm_release_name }}
