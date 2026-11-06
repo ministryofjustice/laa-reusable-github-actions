@@ -77,7 +77,7 @@ jobs:
 
       - name: ECR Auth
         id: auth
-        uses: ministryofjustice/laa-reusable-github-actions/.github/actions/ecr-auth@add-snyk-secrets-to-cp-build-and-deploy
+        uses: ./.github/actions/ecr-auth
         with:
           ecr_region: ${{ inputs.ECR_REGION }}
           ecr_role: ${{ secrets.ECR_ROLE_TO_ASSUME }}
@@ -85,7 +85,7 @@ jobs:
 
       - name: Build and Push
         id: build
-        uses: ministryofjustice/laa-reusable-github-actions/.github/actions/build-and-push@add-snyk-secrets-to-cp-build-and-deploy
+        uses: ./.github/actions/build-and-push
         with:
           dockerfile_path: ${{ inputs.dockerfile_path }}
           image_registry: ${{ steps.auth.outputs.image_registry }}
