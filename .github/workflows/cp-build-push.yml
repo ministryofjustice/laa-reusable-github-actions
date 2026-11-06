@@ -68,10 +68,13 @@ jobs:
     steps:
       - name: Git Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: add-snyk-secrets-to-cp-build-and-deploy
+          persist-credentials: false
 
       - name: ECR Auth
         id: auth
-        uses: $/.github/actions/ecr-auth@add-snyk-secrets-to-cp-build-and-deploy
+        uses: $/.github/actions/ecr-auth
         with:
           ecr_region: ${{ inputs.ECR_REGION }}
           ecr_role: ${{ secrets.ECR_ROLE_TO_ASSUME }}
