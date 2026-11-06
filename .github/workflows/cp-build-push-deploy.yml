@@ -1,8 +1,36 @@
 name: CP - Build image, push to ECR, scan for vulns and deploy to Cloud Platform
 
+permissions: {}
+
 on:
   workflow_call:
+    secrets:
+      SNYK_CLIENT_ID:
+        description: "Snyk Client ID of the Snyk Service Account"
+        required: true
+      SNYK_CLIENT_SECRET:
+        description: "Snyk Client Secret of the Snyk Service Account"
+        required: true
+      ECR_ROLE_TO_ASSUME:
+        description: "IAM role to assume for pushing images to ECR"
+        required: true
+      KUBE_CLUSTER:
+        description: "Kubernetes cluster to deploy to"
+        required: true
+      KUBE_NAMESPACE:
+        description: "Kubernetes namespace to deploy to"
+        required: true
+      KUBE_TOKEN:
+        description: "Kubernetes authentication token"
+        required: true
+      KUBE_CERT:
+        description: "Kubernetes cluster certificate"
+        required: true
     inputs:
+      ecr_repository:
+        description: "Repository name for ECR (usually ${github-team}/${namespace} and found in your repository GitHub Variables)"
+        required: true
+        type: string
       environment:
         description: "Deployment Environment"
         required: false
@@ -51,18 +79,30 @@ on:
 
 jobs:
   build_and_push:
-    uses: ministryofjustice/laa-reusable-github-actions/.github/workflows/cp-build-push.yml@0cb7eb8ab4bf643986ab36ecf3ffcdffa9b55214 # SHA for main as of 3 JUN 2026
+    uses: ./.github/workflows/cp-build-push.yml
+    permissions:
+      contents: read
+      id-token: write
+      actions: read
+      security-events: write
     with:
       environment: ${{ inputs.environment }}
       dockerfile_path: ${{ inputs.dockerfile_path }}
       app_name: ${{ inputs.app_name }}
       image_tag: ${{ inputs.image_tag }}
       dockerfile_requires_git: ${{ inputs.dockerfile_requires_git }}
-    secrets: inherit
+      ecr_repository: ${{ inputs.ecr_repository }}
+    secrets:
+      SNYK_CLIENT_ID: ${{ secrets.SNYK_CLIENT_ID }}
+      SNYK_CLIENT_SECRET: ${{ secrets.SNYK_CLIENT_SECRET }}
+      ECR_ROLE_TO_ASSUME: ${{ secrets.ECR_ROLE_TO_ASSUME }}
 
   helm_deploy:
     needs: build_and_push
-    uses: ministryofjustice/laa-reusable-github-actions/.github/workflows/cp-deploy.yml@0cb7eb8ab4bf643986ab36ecf3ffcdffa9b55214 # SHA for main as of 3 JUN 2026
+    uses: ./.github/workflows/cp-deploy.yml
+    permissions:
+      contents: read
+      id-token: write
     with:
       environment: ${{ inputs.environment }}
       image_repo: ${{ needs.build_and_push.outputs.image_repo }}

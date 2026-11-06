@@ -3,6 +3,15 @@ name: CP - Build image, push to ECR and scan for vulns
 on:
   workflow_call:
     inputs:
+      ECR_REGION:
+        description: "Region for ECR (defaults to eu-west-2)"
+        required: false
+        type: string
+        default: "eu-west-2"
+      ecr_repository:
+        description: "Repository name for ECR (usually ${github-team}/${namespace} and found in your repository GitHub Variables)"
+        required: true
+        type: string
       environment:
         description: "Deployment Environment"
         required: false
@@ -22,7 +31,7 @@ on:
         type: string
         default: ${{ github.sha }}
       additional_image_tags:
-        description: "JSON array of additional tags to apply to the image, e.g. '[\"latest\",\"stable\"]'"
+        description: 'JSON array of additional tags to apply to the image, e.g. ''["latest","stable"]'''
         required: false
         type: string
         default: "[]"
@@ -61,35 +70,37 @@ jobs:
     environment: ${{ inputs.environment }}
 
     steps:
-    - name: Git Checkout
-      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 #--v7.0.1
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
-    - name: ECR Auth
-      id: auth
-      uses: ministryofjustice/laa-reusable-github-actions/.github/actions/ecr-auth@583a60502327d7b9b7701fdb11be9f7d096cf9f5 # SHA for main as of 12/06/2026
-      with:
-        ecr_region: ${{ vars.ECR_REGION }}
-        ecr_role: ${{ secrets.ECR_ROLE_TO_ASSUME }}
-        role-session-name: "github-cicd-${{ inputs.app_name }}-${{ github.run_number }}"
+      - name: ECR Auth
+        id: auth
+        uses: $/.github/actions/ecr-auth
+        with:
+          ecr_region: ${{ inputs.ECR_REGION }}
+          ecr_role: ${{ secrets.ECR_ROLE_TO_ASSUME }}
+          role-session-name: "github-cicd-${{ inputs.app_name }}-${{ github.run_number }}"
 
-    - name: Build and Push
-      id: build
-      uses: ministryofjustice/laa-reusable-github-actions/.github/actions/build-and-push@de080adc3a989fe66cf999d57d32e7bb8d85624f # SHA for branch - TODO update to main once merged
-      with:
-        dockerfile_path: ${{ inputs.dockerfile_path }}
-        image_registry: ${{ steps.auth.outputs.image_registry }}
-        image_repo: ${{ vars.ECR_REPOSITORY }}
-        image_tag: ${{ inputs.image_tag }}
-        additional_image_tags: ${{ inputs.additional_image_tags }}
-        dockerfile_requires_git: ${{ inputs.dockerfile_requires_git }}
+      - name: Build and Push
+        id: build
+        uses: $/.github/actions/build-and-push
+        with:
+          dockerfile_path: ${{ inputs.dockerfile_path }}
+          image_registry: ${{ steps.auth.outputs.image_registry }}
+          image_repo: ${{ inputs.ECR_REPOSITORY }}
+          image_tag: ${{ inputs.image_tag }}
+          additional_image_tags: ${{ inputs.additional_image_tags }}
+          dockerfile_requires_git: ${{ inputs.dockerfile_requires_git }}
 
-    - name: Output
-      id: output
-      run: |
-        echo image_registry=${{ steps.build.outputs.image_registry }} >> "$GITHUB_OUTPUT"
-        echo image_repo=${{ steps.build.outputs.image_repo }} >> "$GITHUB_OUTPUT"
-        echo image_tag=${{ steps.build.outputs.image_tag }} >> "$GITHUB_OUTPUT"
-        echo image_uri="${{ steps.build.outputs.image_registry }}/${{ steps.build.outputs.image_repo }}:${{ steps.build.outputs.image_tag }}" >> "$GITHUB_OUTPUT"
+      - name: Output
+        id: output
+        run: |
+          echo image_registry=${{ steps.build.outputs.image_registry }} >> "$GITHUB_OUTPUT"
+          echo image_repo=${{ steps.build.outputs.image_repo }} >> "$GITHUB_OUTPUT"
+          echo image_tag=${{ steps.build.outputs.image_tag }} >> "$GITHUB_OUTPUT"
+          echo image_uri="${{ steps.build.outputs.image_registry }}/${{ steps.build.outputs.image_repo }}:${{ steps.build.outputs.image_tag }}" >> "$GITHUB_OUTPUT"
 
     outputs:
       image_registry: ${{ steps.output.outputs.image_registry }}
@@ -99,7 +110,7 @@ jobs:
 
   scan:
     needs: build_push
-    uses: ministryofjustice/laa-reusable-github-actions/.github/workflows/sast.yml@a7cbc9ed08d5ab503a21b24297b697797866dc14 # SHA for main as of 5 OCT 2026
+    uses: ./.github/workflows/sast.yml
     with:
       image_uri: ${{ needs.build_push.outputs.image_uri }}
       dockerfile_path: ${{ inputs.dockerfile_path }}
