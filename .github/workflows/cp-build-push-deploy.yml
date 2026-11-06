@@ -75,7 +75,7 @@ on:
 
 jobs:
   build_and_push:
-    uses: $/.github/workflows/cp-build-push.yml
+    uses: ./.github/workflows/cp-build-push.yml
     permissions:
       contents: read
       id-token: write
@@ -94,7 +94,7 @@ jobs:
 
   helm_deploy:
     needs: build_and_push
-    uses: $/.github/workflows/cp-deploy.yml
+    uses: ./.github/workflows/cp-deploy.yml
     permissions:
       contents: read
       id-token: write

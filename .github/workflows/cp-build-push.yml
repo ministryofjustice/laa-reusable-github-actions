@@ -69,12 +69,11 @@ jobs:
       - name: Git Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: add-snyk-secrets-to-cp-build-and-deploy
           persist-credentials: false
 
       - name: ECR Auth
         id: auth
-        uses: $/.github/actions/ecr-auth
+        uses: ministryofjustice/laa-reusable-github-actions/.github/actions/ecr-auth@add-snyk-secrets-to-cp-build-and-deploy
         with:
           ecr_region: ${{ inputs.ECR_REGION }}
           ecr_role: ${{ secrets.ECR_ROLE_TO_ASSUME }}
@@ -82,7 +81,7 @@ jobs:
 
       - name: Build and Push
         id: build
-        uses: $/.github/actions/build-and-push
+        uses: ministryofjustice/laa-reusable-github-actions/.github/actions/build-and-push@add-snyk-secrets-to-cp-build-and-deploy
         with:
           dockerfile_path: ${{ inputs.dockerfile_path }}
           image_registry: ${{ steps.auth.outputs.image_registry }}
@@ -107,7 +106,7 @@ jobs:
 
   scan:
     needs: build_push
-    uses: $/.github/workflows/sast.yml
+    uses: ./.github/workflows/sast.yml
     with:
       image_uri: ${{ needs.build_push.outputs.image_uri }}
       dockerfile_path: ${{ inputs.dockerfile_path }}
