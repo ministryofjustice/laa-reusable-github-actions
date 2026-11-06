@@ -27,6 +27,10 @@ on:
         description: "Kubernetes cluster certificate"
         required: true
     inputs:
+      ecr_repository:
+        description: "Repository name for ECR (usually ${github-team}/${namespace} and found in your repository GitHub Variables)"
+        required: true
+        type: string
       environment:
         description: "Deployment Environment"
         required: false
@@ -87,6 +91,7 @@ jobs:
       app_name: ${{ inputs.app_name }}
       image_tag: ${{ inputs.image_tag }}
       dockerfile_requires_git: ${{ inputs.dockerfile_requires_git }}
+      ecr_repository: ${{ inputs.ecr_repository }}
     secrets:
       SNYK_CLIENT_ID: ${{ secrets.SNYK_CLIENT_ID }}
       SNYK_CLIENT_SECRET: ${{ secrets.SNYK_CLIENT_SECRET }}
