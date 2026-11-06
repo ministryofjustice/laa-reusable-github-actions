@@ -67,11 +67,11 @@ jobs:
 
     steps:
       - name: Git Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 #--v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: ECR Auth
         id: auth
-        uses: $/.github/actions/ecr-auth@add-snyk-secrets-to-cp-build-and-deploy
+        uses: $/.github/actions/ecr-auth
         with:
           ecr_region: ${{ inputs.ECR_REGION }}
           ecr_role: ${{ secrets.ECR_ROLE_TO_ASSUME }}
@@ -79,7 +79,7 @@ jobs:
 
       - name: Build and Push
         id: build
-        uses: ministryofjustice/laa-reusable-github-actions/.github/actions/build-and-push@de080adc3a989fe66cf999d57d32e7bb8d85624f # SHA for branch - TODO update to main once merged
+        uses: $/.github/actions/build-and-push
         with:
           dockerfile_path: ${{ inputs.dockerfile_path }}
           image_registry: ${{ steps.auth.outputs.image_registry }}
@@ -104,7 +104,7 @@ jobs:
 
   scan:
     needs: build_push
-    uses: ministryofjustice/laa-reusable-github-actions/.github/workflows/sast.yml@a7cbc9ed08d5ab503a21b24297b697797866dc14 # SHA for main as of 5 OCT 2026
+    uses: $/.github/workflows/sast.yml
     with:
       image_uri: ${{ needs.build_push.outputs.image_uri }}
       dockerfile_path: ${{ inputs.dockerfile_path }}
