@@ -110,7 +110,7 @@ jobs:
 
   scan:
     needs: build_push
-    uses: ./.github/workflows/sast.yml
+    uses: $/.github/workflows/sast.yml
     with:
       image_uri: ${{ needs.build_push.outputs.image_uri }}
       dockerfile_path: ${{ inputs.dockerfile_path }}
