@@ -31,6 +31,11 @@ on:
         description: "Repository name for ECR (usually ${github-team}/${namespace} and found in your repository GitHub Variables)"
         required: true
         type: string
+      ecr_region:
+        description: "Region for ECR (defaults to eu-west-2)"
+        required: false
+        type: string
+        default: "eu-west-2"
       environment:
         description: "Deployment Environment"
         required: false
@@ -92,6 +97,7 @@ jobs:
       image_tag: ${{ inputs.image_tag }}
       dockerfile_requires_git: ${{ inputs.dockerfile_requires_git }}
       ecr_repository: ${{ inputs.ecr_repository }}
+      ecr_region: ${{ inputs.ecr_region }}
     secrets:
       SNYK_CLIENT_ID: ${{ secrets.SNYK_CLIENT_ID }}
       SNYK_CLIENT_SECRET: ${{ secrets.SNYK_CLIENT_SECRET }}
