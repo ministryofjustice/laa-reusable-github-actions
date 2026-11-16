@@ -107,7 +107,7 @@ jobs:
 
       - name: Obtain short-lived token
         id: auth
-        uses: ministryofjustice/laa-reusable-github-actions/.github/actions/snyk-auth@6db001458db30ae747d9eb8eb25707ce52b359bc
+        uses: ministryofjustice/laa-reusable-github-actions/.github/actions/snyk-auth@8e902f54ebf3350ad43dbdc1f475322cc31967c6
         if: ${{ env.has_token == 'false' }}
         with:
           client_id: ${{ secrets.SNYK_CLIENT_ID }}
