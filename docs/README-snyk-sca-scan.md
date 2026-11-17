@@ -71,15 +71,34 @@ Same authentication options as `sast.yml`:
 |--------------|--------------------------------------------------------------------------|
 | `SNYK_TOKEN` | Snyk API token. If used instead of OAuth, rotate at least every 90 days. |
 
+*Slack alerts (optional)*
+
+| Name                     | Description                                                                                                                   |
+|--------------------------|-------------------------------------------------------------------------------------------------------------------------------|
+| `SLACK_WEBHOOK_URL`      | Incoming webhook for the shared `#laa-snyk-alerts` channel. When set, vulnerabilities are posted there.                       |
+| `TEAM_SLACK_WEBHOOK_URL` | Incoming webhook for a team-owned channel. When set, the same alert is also posted there, in addition to the shared channel. |
+
+If neither is set, no Slack message is sent and the workflow behaves as before. A Slack incoming webhook posts to a single
+channel, so a team that wants its own channel creates a webhook for it and passes it as `TEAM_SLACK_WEBHOOK_URL`.
+
 ## What it scans
 
 `snyk test` runs against the manifest in `working_directory`, gated on
-`minimum_threshold`. There is no `continue-on-error` and no exit-code
-suppression. A finding at or above the threshold fails the job the
-normal GitHub Actions way (`snyk test` exits non-zero, and
-`continue-on-error: false` is set explicitly on the step). Same
-gating behaviour as `sast.yml`'s scans, which rely on the same
-(implicit) GHA default.
+`minimum_threshold`. There is no `continue-on-error`: a finding at or
+above the threshold still fails the job. The exit code is captured so
+the SARIF upload and optional Slack alert run first, then a final step
+fails the job for any non-zero exit.
+
+## Slack alerts
+
+An alert is sent only when `snyk test` reports vulnerabilities at or above `minimum_threshold` (exit code `1`) and at
+least one webhook secret is set. Scan failures (authentication, network, dependency resolution, no projects found) fail
+the job but do **not** send an alert, so operational problems are not mistaken for security findings.
+
+The alert contains the repository, the count of findings by severity, up to 15 affected packages, the scan time, a link
+to the workflow run and a link to the repository's code scanning alerts. Every failing run alerts, so a finding keeps
+being reported until it is fixed, the dependency is upgraded, or an explicit ignore with a reason and expiry is added to
+the `.snyk` policy file. How often that is depends on the caller's schedule.
 
 ## Results
 
@@ -122,6 +141,31 @@ jobs:
       SNYK_CLIENT_ID: ${{ secrets.SNYK_CLIENT_ID }}
       SNYK_CLIENT_SECRET: ${{ secrets.SNYK_CLIENT_SECRET }}
 ```
+
+### Scheduled scan with Slack alerts to the shared and a team channel
+
+```yaml
+on:
+  schedule:
+    - cron: '0 7 * * *'
+
+jobs:
+  sca-scan:
+    uses: ministryofjustice/laa-reusable-github-actions/.github/workflows/snyk-sca-scan.yml@<insert latest sha here>
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    with:
+      scan_all_projects: true
+    secrets:
+      SNYK_CLIENT_ID: ${{ secrets.SNYK_CLIENT_ID }}
+      SNYK_CLIENT_SECRET: ${{ secrets.SNYK_CLIENT_SECRET }}
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      TEAM_SLACK_WEBHOOK_URL: ${{ secrets.TEAM_SLACK_WEBHOOK_URL }}
+```
+
+GitHub cron is in UTC, so a fixed time drifts by an hour across BST and GMT.
 
 ### Maven repo in a subdirectory, lower threshold
 

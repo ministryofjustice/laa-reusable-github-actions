@@ -50,6 +50,12 @@ on:
         required: false
       SNYK_CLIENT_SECRET:
         required: false
+      SLACK_WEBHOOK_URL:
+        description: "Incoming webhook for the shared #laa-snyk-alerts channel. Alerts are only sent when this or TEAM_SLACK_WEBHOOK_URL is set."
+        required: false
+      TEAM_SLACK_WEBHOOK_URL:
+        description: "Optional incoming webhook for a team-owned channel. Receives the same alert in addition to SLACK_WEBHOOK_URL."
+        required: false
 
 jobs:
   sca-scan:
@@ -123,6 +129,7 @@ jobs:
         uses: snyk/actions/setup@9adf32b1121593767fc3c057af55b55db032dc04
 
       - name: Scan dependencies using Snyk
+        id: scan
         continue-on-error: false
         env:
           SNYK_OAUTH_TOKEN: ${{ steps.auth.outputs.token }}
@@ -158,10 +165,13 @@ jobs:
             extra_args+=(--policy-path="${INPUTS_POLICY_PATH}")
           fi
 
+          set +e
           snyk test \
             --severity-threshold="${MINIMUM_THRESHOLD}" \
             --sarif-file-output=sarif/snyk-dependencies.sarif \
+            --json-file-output=snyk-results.json \
             "${extra_args[@]}"
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
 
       - name: Sanitise SARIF files
         if: always()
@@ -179,3 +189,61 @@ jobs:
         uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
         with:
           sarif_file: ${{ inputs.working_directory }}/sarif
+
+      # snyk test exits 1 when vulnerabilities are found; any other non-zero code is a scan failure
+      # (auth, network, build resolution, no projects) and must not be reported as a vulnerability alert.
+      - name: Notify Slack of vulnerabilities
+        if: always() && steps.scan.outputs.exit_code == '1'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          TEAM_SLACK_WEBHOOK_URL: ${{ secrets.TEAM_SLACK_WEBHOOK_URL }}
+          MINIMUM_THRESHOLD: ${{ inputs.minimum_threshold }}
+          REPOSITORY: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          RESULTS_URL: ${{ github.server_url }}/${{ github.repository }}/security/code-scanning
+        working-directory: ${{ inputs.working_directory }}
+        run: |
+          if [ -z "$SLACK_WEBHOOK_URL" ] && [ -z "$TEAM_SLACK_WEBHOOK_URL" ]; then
+            echo "No Slack webhook configured, skipping alert"
+            exit 0
+          fi
+
+          jq '[ (if type == "array" then .[] else . end) | .vulnerabilities[]? ]
+              | unique_by([.id, .packageName, .version])' snyk-results.json > vulns.json
+
+          counts=$(jq -r '[ "critical", "high", "medium", "low" ] as $order
+                          | . as $v
+                          | $order | map(. as $sev | "\($sev): \([$v[] | select(.severity == $sev)] | length)")
+                          | join(", ")' vulns.json)
+          packages=$(jq -r '[.[] | "\(.packageName)@\(.version) (\(.severity))"] | unique | .[:15][] | "• " + .' vulns.json)
+          scanned_at=$(date -u '+%Y-%m-%d %H:%M UTC')
+
+          text=$(printf '%s\n' \
+            ":rotating_light: *Snyk found vulnerabilities in ${REPOSITORY}* (threshold: ${MINIMUM_THRESHOLD})" \
+            "*Count by severity:* ${counts}" \
+            "*Affected packages:*" \
+            "${packages}" \
+            "*Scanned:* ${scanned_at}" \
+            "*Workflow run:* <${RUN_URL}|View run>" \
+            "*Results:* <${RESULTS_URL}|Code scanning alerts>")
+
+          status=0
+          for webhook in "$SLACK_WEBHOOK_URL" "$TEAM_SLACK_WEBHOOK_URL"; do
+            [ -z "$webhook" ] && continue
+            jq -n --arg text "$text" '{text: $text}' \
+              | curl --fail --silent --show-error -X POST -H 'Content-type: application/json' --data @- "$webhook" \
+              || status=1
+          done
+          exit $status
+
+      - name: Fail if the scan did not pass
+        if: always() && steps.scan.outputs.exit_code != '0'
+        env:
+          EXIT_CODE: ${{ steps.scan.outputs.exit_code }}
+        run: |
+          if [ "$EXIT_CODE" = "1" ]; then
+            echo "::error::Snyk found vulnerabilities at or above the minimum threshold"
+          else
+            echo "::error::Snyk scan did not complete (exit code ${EXIT_CODE:-unknown}); no Slack alert was sent"
+          fi
+          exit 1
