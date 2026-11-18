@@ -261,6 +261,24 @@ jobs:
             --severity-threshold=${MINIMUM_THRESHOLD} \
             --sarif-file-output=sarif/snyk-code.sarif
 
+      # Snyk writes one SARIF run per application project it finds in a container image (for example one
+      # per jar in a Maven cache), and GitHub Code Scanning rejects files with more than 20 runs.
+      # Merge them into a single run so the upload succeeds.
+      - name: Merge SARIF runs
+        if: always()
+        run: |
+          for sarif in sarif/*.sarif; do
+            if [ -f "$sarif" ] && [ "$(jq '.runs | length' "$sarif")" -gt 1 ]; then
+              jq '. as $doc
+                | .runs = [
+                    ($doc.runs[0]
+                      | .results = [ $doc.runs[] | .results[]? ]
+                      | .tool.driver.rules = ([ $doc.runs[] | .tool.driver.rules[]? ] | unique_by(.id)))
+                  ]' "$sarif" > "$sarif.merged"
+              mv "$sarif.merged" "$sarif"
+            fi
+          done
+
       - name: Sanitise SARIF files
         if: always()
         run: |
