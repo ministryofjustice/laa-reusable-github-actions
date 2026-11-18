@@ -153,6 +153,26 @@ The workflow sanitises SARIF files before upload to replace any `null`
 or `undefined` severity values, which would otherwise cause the upload
 to fail.
 
+### SARIF files with more than 20 runs
+
+Snyk writes one SARIF run for each application project it finds in a
+container image (for example one per jar in a Maven cache). GitHub code
+scanning rejects any SARIF file with more than 20 runs, so the upload
+would fail and no container alerts would appear.
+
+Only when a SARIF file has more than 20 runs, the workflow consolidates
+them into a single run before upload:
+
+- all results are kept
+- rules are de-duplicated by `id`
+- the first run's metadata is kept
+
+The step logs a warning annotation (`SARIF runs consolidated`) naming
+the file and the number of runs, so you can see when it happened. Files
+with 20 runs or fewer are not changed. Snyk results reference rules by
+`ruleId` and do not set `ruleIndex`, so merging the rules does not break
+the links between results and rules.
+
 ## Examples
 
 ### Scan a container image from ECR
