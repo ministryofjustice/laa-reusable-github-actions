@@ -32,6 +32,7 @@ jobs:
           SARIF_REPORTER: true # Required to allow for posting to GitHub security tab for better visibility
           ACTION_DIRECTORY: .github
           ACTION_ZIZMOR_FILTER_REGEX_EXCLUDE: dependabot.yml
+          FLAVOR_SUGGESTIONS: false
 
           # List of approved linters
           ENABLE_LINTERS: ACTION_ZIZMOR,MARKDOWN_MARKDOWNLINT
