@@ -6,9 +6,6 @@ on:
       - main
       - master
 
-env:
-  SARIF_REPORTER: true # Required to allow for posting to GitHub security tab for better visibility
-
 permissions: {}
 
 jobs:
@@ -25,15 +22,22 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0
 
       - name: MegaLinter
         id: ml
         uses: oxsecurity/megalinter@f2fe8c1cba37091848df3e524066c8c23ef353ed
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SARIF_REPORTER: true # Required to allow for posting to GitHub security tab for better visibility
+          ACTION_DIRECTORY: .github
+          ACTION_ZIZMOR_FILTER_REGEX_EXCLUDE: dependabot.yml
+
+          # List of approved linters
           ENABLE_LINTERS: ACTION_ZIZMOR,MARKDOWN_MARKDOWNLINT
 
           # To use custom environment variables, add .mega-linter.yml to the root of your repository
+          # Note: This does not override environment variables established in this workflow
           # For example, you may only wish to run the linter on the diff between your branch and the default
           # You can do this using: VALIDATE_ALL_CODEBASE: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
           # You can find a sample file here: /.github/workflows/mega-linter/.mega-linter.yml
@@ -49,8 +53,21 @@ jobs:
             megalinter-reports
             mega-linter.log
 
-      - name: SARIF upload to GitHub Security tab
+      - name: SARIF file checker
+        shell: bash
+        id: sarif-check
         if: ${{ !cancelled() }}
+        run: |
+          #!/bin/bash
+          if ! jq -e '[.runs[].results[]?] | length > 0' './megalinter-reports/megalinter-report.sarif' > /dev/null; then
+            echo "SARIF file exists, but is empty"
+            exit 1
+          else
+            echo "SARIF file exists and contains data"
+          fi
+
+      - name: SARIF upload to GitHub Security tab
+        if: steps.sarif-check.outcome != 'failure'
         uses: github/codeql-action/upload-sarif@52cf1852265d99e9bea071b03366fc777a602909
         with:
           sarif_file: "megalinter-reports/megalinter-report.sarif"
