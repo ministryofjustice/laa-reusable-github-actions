@@ -10,6 +10,8 @@ This is a beta function from Github and may be changed/break at very short notic
 
 When raising a Pull Request against this repository, you will need an approval from laa-sre-admin and at least one additional reviewer
 
+To request a review, post the PR link in #ask-laa-sre
+
 ## Currently available workflows
 
 See dedicated READMEs where available
